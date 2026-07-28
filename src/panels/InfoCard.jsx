@@ -20,8 +20,9 @@ export default function InfoCard({ node, onClose, onNodeClick, allLinks, allNode
       else continue;
       const otherNode = allNodesById?.get(other);
       if (!otherNode) continue;
-      const arr = groups[l.meta_relation] || groups['其他'];
-      arr.push({ node: otherNode, label: l.label, info: l.info });
+      const relKey = l.meta_relation || '其他';
+      const arr = groups[relKey] || groups['其他'];
+      arr.push({ node: otherNode, label: l.label, info: l.info, relColor: l.color });
     }
     return groups;
   }, [node, allLinks, allNodesById]);
@@ -29,6 +30,11 @@ export default function InfoCard({ node, onClose, onNodeClick, allLinks, allNode
   const groupLabels = {
     spatial: '空間關係', social: '人際關係', causal: '因果與影響',
     creative: '創作與設計', documentary: '紀錄與引用', 其他: '其他關係',
+  };
+
+  const groupColors = {
+    spatial: '#d97706', social: '#2563eb', causal: '#dc2626',
+    creative: '#9333ea', documentary: '#059669', 其他: '#6b7280',
   };
 
   return (
@@ -45,10 +51,12 @@ export default function InfoCard({ node, onClose, onNodeClick, allLinks, allNode
           <div className="title-1" style={{ marginBottom: 4 }}>{node.id}</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <span className="chip">
-              <span className="chip-dot" style={{ background: `var(--cat-${node.meta_group})` }} />
+              <span className="chip-dot" style={{ background: node.color || `var(--cat-${node.meta_group})` || '#888' }} />
               {node.meta_group}
             </span>
-            <span className="chip">{node.node_Group}</span>
+            {node.node_Group && node.node_Group !== node.meta_group && (
+              <span className="chip">{node.node_Group}</span>
+            )}
           </div>
         </div>
         <button className="btn icon-only" onClick={onClose} aria-label="關閉">✕</button>
@@ -81,10 +89,11 @@ export default function InfoCard({ node, onClose, onNodeClick, allLinks, allNode
                 className="caption"
                 style={{
                   fontWeight: 600, color: 'var(--ink-secondary)',
-                  borderLeft: `3px solid var(--rel-${key})`, paddingLeft: 8, marginBottom: 6,
+                  borderLeft: `3px solid ${groupColors[key] || 'var(--rel-' + key + ')'}`,
+                  paddingLeft: 8, marginBottom: 6,
                 }}
               >
-                {groupLabels[key]}（{items.length}）
+                {groupLabels[key] || key}（{items.length}）
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {items.slice(0, 12).map((it, i) => (
@@ -98,7 +107,14 @@ export default function InfoCard({ node, onClose, onNodeClick, allLinks, allNode
                     onClick={() => onNodeClick?.(it.node)}
                     title={it.info || ''}
                   >
-                    <span className="chip-dot" style={{ background: `var(--cat-${it.node.meta_group})`, marginRight: 6 }} />
+                    <span
+                      className="chip-dot"
+                      style={{
+                        background: it.node.color || `var(--cat-${it.node.meta_group})` || '#888',
+                        marginRight: 6,
+                        flexShrink: 0
+                      }}
+                    />
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {it.node.id}
                     </span>
