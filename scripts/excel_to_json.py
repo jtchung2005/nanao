@@ -1,32 +1,37 @@
 import pandas as pd
 import json
 import os
-import urllib.parse
 
 # 1. 填入您的 Google Sheet ID
 SPREADSHEET_ID = "1X7gYxlJaUcbzPNgeLO-hjsz1tVGc7TZDAB5817B8BaI"
 
-def get_sheet_df(sheet_name):
-    encoded_name = urllib.parse.quote(sheet_name)
-    # 💡 使用 Google Sheets 官方標準 CSV 匯出網址 (/export?format=csv)
-    url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&sheet={encoded_name}"
-    print(f"正在嘗試讀取工作表 [{sheet_name}]...")
+# 2. 填入各個頁籤對應的 gid 數字 (請從 Google Sheet 網址末端 #gid=xxxx 複製)
+SHEET_GIDS = {
+    'nodes_ALL': '422651298',         # ⚠️ 請替換為 nodes_ALL 的實際 gid
+    'link_ALL': '1851835395',   # ⚠️ 請替換為 link_ALL 的實際 gid
+    'nodes_color': '443146848',# ⚠️ 請替換為 nodes_color 的實際 gid
+    'links_color': '623413879' # ⚠️ 請替換為 links_color 的實際 gid
+}
+
+def get_sheet_df_by_gid(sheet_key):
+    gid = SHEET_GIDS.get(sheet_key)
+    if not gid:
+        raise ValueError(f"未設定 {sheet_key} 的 gid！")
+        
+    url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid={gid}"
+    print(f"正在嘗試讀取工作表 [{sheet_key}] (gid: {gid})...")
     
-    # 讀取 CSV
     df = pd.read_csv(url)
-    
-    # 清理欄位名稱前後空白
     df.columns = df.columns.astype(str).str.strip()
     return df
 
 try:
     print("正在從 Google Sheets 抓取資料...")
-    df_nodes = get_sheet_df('nodes_ALL')
-    df_links = get_sheet_df('link_ALL')
-    df_n_color = get_sheet_df('nodes_color')
-    df_l_color = get_sheet_df('links_color')
+    df_nodes = get_sheet_df_by_gid('nodes_ALL')
+    df_links = get_sheet_df_by_gid('link_ALL')
+    df_n_color = get_sheet_df_by_gid('nodes_color')
+    df_l_color = get_sheet_df_by_gid('links_color')
 
-    # 印出欄位確認
     print(f"nodes_ALL 成功讀取欄位: {list(df_nodes.columns)}")
 
     # 動態匹配 nodes_ALL 欄位名稱
