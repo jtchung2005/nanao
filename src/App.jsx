@@ -1,128 +1,68 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useGraphData } from './state/useGraphData.js';
-import { useUrlState, codecs } from './state/useUrlState.js';
-import { ForceGraph } from './graph/ForceGraph.js';
-import LabelLayer from './graph/LabelLayer.jsx';
-import HoverTooltip from './graph/HoverTooltip.jsx';
-import { computeNeighbors } from './utils/highlight.js';
-import { setNodeSizeScale } from './graph/Renderer.js';
-import { getNodeLonLat } from './graph/ForceGraph.js';
-import InfoCard from './panels/InfoCard.jsx';
-import Search from './panels/Search.jsx';
-import Legend from './panels/Legend.jsx';
-import RelationFilter from './panels/RelationFilter.jsx';
-import GroupSidebar from './panels/GroupSidebar.jsx';
-import TimelineSlider from './panels/TimelineSlider.jsx';
-import Minimap from './panels/Minimap.jsx';
-import GraphControl from './panels/GraphControl.jsx';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import useGraphData from './state/useGraphData';
+import useUrlState from './state/useUrlState';
+import ForceGraph from './graph/ForceGraph';
+import GroupSidebar from './panels/GroupSidebar';
+import RelationFilter from './panels/RelationFilter';
+import TimelineSlider from './panels/TimelineSlider';
+import Search from './panels/Search';
+import InfoCard from './panels/InfoCard';
+import Minimap from './panels/Minimap';
+import GraphControl from './panels/GraphControl';
+import Legend from './panels/Legend';
+import { highlightNodesAndLinks } from './utils/highlight';
 
-const URL_PARAMS = {
-  node:   { default: '', ...codecs.string },
-  mg:     { default: new Set(), ...codecs.setOfStrings },
-  mr:     { default: new Set(), ...codecs.setOfStrings },
-  bt:     { default: false, ...codecs.bool },
-  od:     { default: false, ...codecs.bool },
-  years:  { default: null, parse: codecs.intRange.parse, serialize: (v) => v ? codecs.intRange.serialize(v) : '' },
-};
-
-const BP_MOBILE = 768;
-const DEFAULTS = { fontSize: 12, nodeScale: 1.0, charge: -360 };
+const DEFAULTS = { fontSize: 12, nodeScale: 1.0, charge: -360, minDegree: 0 };
 
 export default function App() {
   const { data, loading, error } = useGraphData();
-  const containerRef = useRef(null);
-  const graphRef = useRef(null);
-  const bottomRef = useRef(null);
-  const ctrlRef = useRef(null);
+  const [urlState, setUrlState] = useUrlState(data);
 
-  const [hover, setHover] = useState({ node: null, x: 0, y: 0 });
-  const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
-  const [collapsedGroups, setCollapsedGroups] = useState(new Set());
-  const [groupHighlight, setGroupHighlight] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= BP_MOBILE);
-  const [ctrlOpen, setCtrlOpen] = useState(window.innerWidth >= BP_MOBILE);
-  const [bottomBarH, setBottomBarH] = useState(150);
-  const [ctrlH, setCtrlH] = useState(40);
-
+  // 控制面板滑軌狀態
   const [fontSize, setFontSize] = useState(DEFAULTS.fontSize);
   const [nodeScale, setNodeScale] = useState(DEFAULTS.nodeScale);
   const [charge, setCharge] = useState(DEFAULTS.charge);
+  const [minDegree, setMinDegree] = useState(DEFAULTS.minDegree);
   const [spatialMode, setSpatialMode] = useState(true);
 
-  const [urlState, setUrlState] = useUrlState(URL_PARAMS);
-  const isMobile = vp.w < BP_MOBILE;
+  // 面板展開 / 收折
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [filterOpen, setFilterOpen] = useState(true);
+  const [timelineOpen, setTimelineOpen] = useState(true);
+  const [ctrlOpen, setCtrlOpen] = useState(false);
 
-  // 初始化 URL state
-  useEffect(() => {
-    if (!data) return;
-    setUrlState((s) => {
-      const next = { ...s };
-      if (s.mg.size === 0) next.mg = new Set(data.meta_groups.filter((g) => g.count > 0).map((g) => g.id));
-      if (s.mr.size === 0) next.mr = new Set(data.meta_relations.filter((r) => r.count > 0).map((r) => r.id));
-      if (!s.years) next.years = data.stats.year_range.slice();
-      return next;
-    });
-  }, [data, setUrlState]);
+  // 選取的節點 ID
+  const [selectedId, setSelectedId] = useState(null);
 
-  // 視窗縮放
+  // 搜尋聚焦：當從搜尋列選取時，傳給 ForceGraph 發動平移/縮放
+  const [focusedId, setFocusedId] = useState(null);
+
+  // RWD 視窗寬度檢測
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   useEffect(() => {
-    const onResize = () => {
-      setVp({ w: window.innerWidth, h: window.innerHeight });
-      if (window.innerWidth < BP_MOBILE) {
-        setSidebarOpen(false);
-        setCtrlOpen(false);
-      }
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 量測底部 bar / 控制面板高度
-  useEffect(() => {
-    if (!bottomRef.current) return;
-    const ro = new ResizeObserver((es) => setBottomBarH(es[0].contentRect.height));
-    ro.observe(bottomRef.current);
-    return () => ro.disconnect();
-  }, []);
-  useEffect(() => {
-    if (!ctrlRef.current) { setCtrlH(40); return; }
-    const ro = new ResizeObserver((es) => setCtrlH(es[0].contentRect.height));
-    ro.observe(ctrlRef.current);
-    return () => ro.disconnect();
-  }, [ctrlOpen]);
-
-  // 計算 lat/lon bounds（自動修正 swap）— 必須在用到它的 effect 之前宣告
-  const spatialInfo = useMemo(() => {
-    if (!data) return { bounds: null, count: 0 };
-    let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
-    let count = 0;
-    for (const n of data.nodes) {
-      const ll = getNodeLonLat(n);
-      if (!ll) continue;
-      if (ll.lon < minLon) minLon = ll.lon;
-      if (ll.lon > maxLon) maxLon = ll.lon;
-      if (ll.lat < minLat) minLat = ll.lat;
-      if (ll.lat > maxLat) maxLat = ll.lat;
-      count++;
-    }
-    if (!count) return { bounds: null, count: 0 };
-    const padLon = (maxLon - minLon) * 0.05 || 0.001;
-    const padLat = (maxLat - minLat) * 0.05 || 0.001;
-    return {
-      bounds: {
-        minLon: minLon - padLon, maxLon: maxLon + padLon,
-        minLat: minLat - padLat, maxLat: maxLat + padLat,
-      },
-      count,
-    };
-  }, [data]);
-
-  // 過濾
+  // 靜態過濾邏輯（包含 MetaGroup, MetaRelation, 年份, Breakthrough, On-Demand 與最小連線數 MinDegree）
   const filtered = useMemo(() => {
     if (!data) return null;
     const ag = urlState.mg.size ? urlState.mg : new Set(data.meta_groups.map((g) => g.id));
     const ar = urlState.mr.size ? urlState.mr : new Set(data.meta_relations.map((r) => r.id));
     const [yMin, yMax] = urlState.years || data.stats.year_range;
+
+    // 1. 根據目前啟用的 MetaRelation 先計算各節點的預估連線數量 (Degree)
+    const degreeMap = new Map();
+    for (const l of data.links) {
+      if (!ar.has(l.meta_relation)) continue;
+      const s = typeof l.source === 'object' ? l.source.id : l.source;
+      const t = typeof l.target === 'object' ? l.target.id : l.target;
+      degreeMap.set(s, (degreeMap.get(s) || 0) + 1);
+      degreeMap.set(t, (degreeMap.get(t) || 0) + 1);
+    }
+
+    // 2. 篩選符合條件的節點
     const nodes = data.nodes.filter((n) => {
       if (!ag.has(n.meta_group)) return false;
       if (urlState.bt && !n.breakthrough_note) return false;
@@ -132,8 +72,15 @@ export default function App() {
         const ne = n.end_year ?? ns;
         if (ne < yMin || ns > yMax) return false;
       }
+
+      // 節點連線數門檻篩選
+      const deg = degreeMap.get(n.id) || 0;
+      if (deg < minDegree) return false;
+
       return true;
     });
+
+    // 3. 根據通過條件的節點建立 ID 集合並過濾關係邊
     const ids = new Set(nodes.map((n) => n.id));
     const links = data.links.filter((l) => {
       if (!ar.has(l.meta_relation)) return false;
@@ -141,324 +88,275 @@ export default function App() {
       const t = typeof l.target === 'object' ? l.target.id : l.target;
       return ids.has(s) && ids.has(t);
     });
+
     return { nodes, links };
-  }, [data, urlState.mg, urlState.mr, urlState.bt, urlState.od, urlState.years]);
+  }, [data, urlState.mg, urlState.mr, urlState.bt, urlState.od, urlState.years, minDegree]);
 
-  useEffect(() => {
-    if (!filtered || !containerRef.current) return;
-    if (!graphRef.current) {
-      graphRef.current = new ForceGraph(containerRef.current);
-      graphRef.current.on('click', (n) => setUrlState((s) => ({ ...s, node: n?.id ?? '' })));
-      graphRef.current.on('hover', (n, e) => {
-        if (n && e) setHover({ node: n, x: e.clientX, y: e.clientY });
-        else setHover({ node: null, x: 0, y: 0 });
-      });
-      // 在第一次 setData 之前先告訴 graph 目前 spatial 模式，避免初始化雙重重啟
-      graphRef.current._spatialMode = spatialMode && spatialInfo.count > 0;
-      graphRef.current._spatialBounds = spatialInfo.bounds;
+  // 動態高亮計算
+  const displayGraph = useMemo(() => {
+    if (!filtered) return { nodes: [], links: [] };
+    if (!selectedId) {
+      return {
+        nodes: filtered.nodes.map((n) => ({ ...n, opacity: 1, isTarget: false, isNeighbor: false })),
+        links: filtered.links.map((l) => ({ ...l, opacity: 0.6, isConnected: false })),
+      };
     }
-    graphRef.current.setData(filtered.nodes, filtered.links);
-  }, [filtered, setUrlState, spatialMode, spatialInfo]);
+    return highlightNodesAndLinks(filtered.nodes, filtered.links, selectedId);
+  }, [filtered, selectedId]);
 
-  useEffect(() => () => {
-    if (graphRef.current) {
-      graphRef.current.destroy();
-      graphRef.current = null;
+  // 選取的節點物件
+  const selectedNode = useMemo(() => {
+    if (!selectedId || !data) return null;
+    return data.nodes.find((n) => n.id === selectedId) || null;
+  }, [selectedId, data]);
+
+  // 計算擁有地理座標的節點數量
+  const spatialInfo = useMemo(() => {
+    if (!data) return { count: 0, total: 0 };
+    let count = 0;
+    for (const n of data.nodes) {
+      if (n.lat != null && n.lng != null && !isNaN(n.lat) && !isNaN(n.lng)) count++;
     }
-  }, []);
-
-  // ── GraphControl 連動 ────────────────────────────
-  useEffect(() => {
-    setNodeSizeScale(nodeScale);
-    if (graphRef.current) {
-      graphRef.current.requestRedraw();
-      graphRef.current.reapplyCollide();
-    }
-  }, [nodeScale]);
-
-  useEffect(() => {
-    if (graphRef.current) graphRef.current.setChargeStrength(charge);
-  }, [charge]);
-
-  // 同步 spatial 狀態到 ForceGraph
-  useEffect(() => {
-    if (!graphRef.current) return;
-    graphRef.current.setSpatialMode(spatialMode && spatialInfo.count > 0, spatialInfo.bounds);
-  }, [spatialMode, spatialInfo]);
-
-  const allNodesById = useMemo(() => {
-    if (!data) return new Map();
-    return new Map(data.nodes.map((n) => [n.id, n]));
+    return { count, total: data.nodes.length };
   }, [data]);
 
-  const selected = urlState.node ? allNodesById.get(urlState.node) : null;
-
-  const applyGroupHighlight = (idSet) => {
-    const g = graphRef.current;
-    if (!g) return;
-    const linkKeys = new Set();
-    for (const l of g.links) {
-      const s = l.source.id || l.source;
-      const t = l.target.id || l.target;
-      if (idSet.has(s) && idSet.has(t)) linkKeys.add(s + '|' + t + '|' + l.label);
-    }
-    g.setHighlight(idSet, linkKeys);
-  };
+  // 左側群組面板與搜尋列定位
+  const groupSidebarRef = useRef(null);
+  const [searchTop, setSearchTop] = useState(70);
 
   useEffect(() => {
-    const g = graphRef.current;
-    if (!g) return;
-    g.setSelected(selected?.id ?? null);
-    if (selected) {
-      const r = computeNeighbors(selected.id, g.links);
-      g.setHighlight(r?.nodeIds, r?.linkKeys);
-      setGroupHighlight(null);
-    } else if (groupHighlight) {
-      applyGroupHighlight(groupHighlight.ids);
-    } else {
-      g.setHighlight(null, null);
-    }
-  }, [selected]);
-
-  const handleHighlightIds = (ids, key) => {
-    if (groupHighlight?.key === key) {
-      setGroupHighlight(null);
-      const g = graphRef.current;
-      if (g) g.setHighlight(null, null);
-      return;
-    }
-    setGroupHighlight({ ids, key });
-    if (urlState.node) setUrlState((s) => ({ ...s, node: '' }));
-    applyGroupHighlight(ids);
-  };
-
-  const highlightIds = useMemo(() => {
-    if (selected && graphRef.current) {
-      const r = computeNeighbors(selected.id, graphRef.current.links);
-      return r?.nodeIds ?? new Set([selected.id]);
-    }
-    if (groupHighlight) return groupHighlight.ids;
-    return null;
-  }, [selected, groupHighlight, filtered]);
-
-  const toggleSetIn = (key, id) => setUrlState((s) => {
-    const ns = new Set(s[key]);
-    if (ns.has(id)) ns.delete(id); else ns.add(id);
-    return { ...s, [key]: ns };
-  });
-  const reset = () => {
-    if (!data) return;
-    setUrlState({
-      node: '',
-      mg: new Set(data.meta_groups.filter((g) => g.count > 0).map((g) => g.id)),
-      mr: new Set(data.meta_relations.filter((r) => r.count > 0).map((r) => r.id)),
-      bt: false,
-      od: false,
-      years: data.stats.year_range.slice(),
+    if (!groupSidebarRef.current) return;
+    const observer = new ResizeObserver(() => {
+      if (groupSidebarRef.current) {
+        setSearchTop(groupSidebarRef.current.offsetHeight + 18);
+      }
     });
-    setCollapsedGroups(new Set());
-    setGroupHighlight(null);
-    if (graphRef.current) graphRef.current.setHighlight(null, null);
-  };
+    observer.observe(groupSidebarRef.current);
+    return () => observer.disconnect();
+  }, [sidebarOpen]);
+
+  // 右側關係面板與控制按鈕定位
+  const filterRef = useRef(null);
+  const ctrlRef = useRef(null);
+  const [ctrlTop, setCtrlTop] = useState(70);
+
+  useEffect(() => {
+    if (!filterRef.current) return;
+    const observer = new ResizeObserver(() => {
+      if (filterRef.current) {
+        setCtrlTop(filterRef.current.offsetHeight + 18);
+      }
+    });
+    observer.observe(filterRef.current);
+    return () => observer.disconnect();
+  }, [filterOpen]);
+
+  // 圖譜控制重置
   const resetGraphControl = () => {
     setFontSize(DEFAULTS.fontSize);
     setNodeScale(DEFAULTS.nodeScale);
     setCharge(DEFAULTS.charge);
+    setMinDegree(DEFAULTS.minDegree);
   };
-  const focusNodeGroup = (mg) => setUrlState((s) => ({ ...s, mg: new Set([mg]) }));
-  const handleNodeClick = (node) => {
-    setUrlState((s) => ({ ...s, node: node.id }));
-    graphRef.current?.zoomToNode(node.id, 1.4);
-  };
-  const onClose = () => setUrlState((s) => ({ ...s, node: '' }));
 
-  // ── Layout ──────────────────────────────────────
-  // 底部時間軸永遠左右撐滿
-  // 側邊面板停在 bottom bar 上方
-  const sidePanelBottom = bottomBarH + 24; // gap above bottom bar
-  const minimapBottom = bottomBarH + 16;
-  const ctrlTop = 80;
-  const infoCardTop = ctrlTop + (ctrlOpen ? ctrlH : 40) + 8;
-  const infoCardWidth = isMobile ? 'calc(100vw - 24px)' : 360;
+  // 事件處理器
+  const handleToggleGroup = useCallback((id) => setUrlState((s) => ({ ...s, mg: toggleSet(s.mg, id) })), [setUrlState]);
+  const handleToggleRelation = useCallback((id) => setUrlState((s) => ({ ...s, mr: toggleSet(s.mr, id) })), [setUrlState]);
+  const handleToggleAllGroups = useCallback((enableAll) => setUrlState((s) => ({ ...s, mg: enableAll ? new Set() : new Set(['__NONE__']) })), [setUrlState]);
+  const handleToggleAllRelations = useCallback((enableAll) => setUrlState((s) => ({ ...s, mr: enableAll ? new Set() : new Set(['__NONE__']) })), [setUrlState]);
+
+  const handleSelectNode = useCallback((id) => {
+    setSelectedId(id);
+    if (id) setFocusedId(id);
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper-bg)' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 24, marginBottom: 8, color: 'var(--ink-secondary)' }}>⌛</div>
+          <div className="subhead" style={{ color: 'var(--ink-secondary)' }}>載入南澳知識圖譜中...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper-bg)' }}>
+        <div className="paper-card" style={{ padding: 24, maxWidth: 400, textAlign: 'center' }}>
+          <div style={{ fontSize: 28, color: 'var(--breakthrough)', marginBottom: 8 }}>⚠</div>
+          <div className="subhead" style={{ marginBottom: 8 }}>資料載入失敗</div>
+          <div className="body-text" style={{ color: 'var(--ink-secondary)' }}>{error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  const [yMin, yMax] = urlState.years || data.stats.year_range;
 
   return (
-    <div className="paper-bg fixed inset-0">
-      <div ref={containerRef} className="absolute inset-0" style={{ zIndex: 1 }} />
+    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: 'var(--paper-bg)' }}>
+      {/* 標題列 */}
+      <header
+        className="paper-card"
+        style={{
+          position: 'absolute', top: 12, left: 12, zIndex: 30,
+          padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 12,
+          borderRadius: 8,
+        }}
+      >
+        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: '0.02em' }}>南澳知識圖譜</h1>
+        <span className="caption" style={{ color: 'var(--ink-faint)' }}>
+          {filtered?.nodes.length ?? 0} / {data.stats.total_nodes} 點 · {filtered?.links.length ?? 0} / {data.stats.total_links} 邊
+        </span>
+      </header>
 
-      <LabelLayer
-        graph={graphRef.current}
-        width={vp.w}
-        height={vp.h}
-        highlightIds={highlightIds}
+      {/* ForceGraph 畫布 */}
+      <ForceGraph
+        nodes={displayGraph.nodes}
+        links={displayGraph.links}
+        metaGroups={data.meta_groups}
         fontSize={fontSize}
+        nodeScale={nodeScale}
+        charge={charge}
+        spatialMode={spatialMode}
+        selectedId={selectedId}
+        focusedId={focusedId}
+        onSelectNode={handleSelectNode}
+        onClearFocus={() => setFocusedId(null)}
       />
 
-      <HoverTooltip node={hover.node} x={hover.x} y={hover.y} />
-
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center fade-in" style={{ zIndex: 100 }}>
-          <div className="caption">載入南澳資料中...</div>
-        </div>
-      )}
-
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 100 }}>
-          <div className="paper-card body" style={{ padding: 24, color: 'var(--cat-事件)' }}>
-            錯誤：{error.message}
-          </div>
-        </div>
-      )}
-
-      {/* Top bar */}
-      {data && (
-        <div
-          className="paper-card"
-          style={{
-            position: 'absolute', top: 12, left: 12, right: 12, height: 56,
-            display: 'flex', alignItems: 'center', padding: '0 16px', gap: 12,
-            zIndex: 30,
-          }}
-        >
-          <div className="title-2" style={{ whiteSpace: 'nowrap' }}>南澳知識圖譜</div>
-          {!isMobile && (
-            <div className="caption" style={{ borderRight: '1px solid var(--ink-line)', paddingRight: 12, whiteSpace: 'nowrap' }}>
-              — Klesan 群人文地景數位典藏
-            </div>
-          )}
-          <Search nodes={data.nodes} links={data.links} onSelectNode={handleNodeClick} />
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-            {!isMobile && (
-              <span className="tiny" style={{ whiteSpace: 'nowrap' }}>
-                節點 {filtered?.nodes.length ?? 0}/{data.stats.nodes} ・
-                關係 {filtered?.links.length ?? 0}/{data.stats.links}
-              </span>
-            )}
-            <button className="btn" onClick={() => graphRef.current?.zoomToFit()} title="全覽">⛶</button>
-            <button className="btn" onClick={reset} title="重置篩選">↺</button>
-          </div>
-        </div>
-      )}
-
-      {/* Left sidebar */}
-      {data && (
+      {/* 左上: GroupSidebar */}
+      <div
+        ref={groupSidebarRef}
+        style={{
+          position: 'absolute', top: 60, left: 12, zIndex: 20,
+          maxWidth: isMobile ? 'calc(100vw - 24px)' : 280,
+        }}
+      >
         <GroupSidebar
-          nodes={filtered?.nodes ?? data.nodes}
-          onPickNodeGroup={focusNodeGroup}
-          onPickNode={handleNodeClick}
-          onHighlightIds={handleHighlightIds}
-          activeHighlightKey={groupHighlight?.key ?? null}
-          collapsed={collapsedGroups}
-          setCollapsed={setCollapsedGroups}
+          metaGroups={data.meta_groups}
+          activeGroupIds={urlState.mg}
+          onToggleGroup={handleToggleGroup}
+          onToggleAll={handleToggleAllGroups}
           open={sidebarOpen}
-          setOpen={setSidebarOpen}
-          bottomOffset={sidePanelBottom}
+          onToggleOpen={() => setSidebarOpen((v) => !v)}
         />
-      )}
+      </div>
 
-      {/* Right: GraphControl */}
-      {data && (
+      {/* 左側: Search (放置於 GroupSidebar 下方) */}
+      <div
+        style={{
+          position: 'absolute', top: searchTop, left: 12, zIndex: 20,
+          width: isMobile ? 'calc(100vw - 24px)' : 280,
+        }}
+      >
+        <Search
+          nodes={filtered?.nodes || []}
+          onSelect={handleSelectNode}
+          selectedId={selectedId}
+        />
+      </div>
+
+      {/* 右上: RelationFilter */}
+      <div
+        ref={filterRef}
+        style={{
+          position: 'absolute', top: 12, right: 12, zIndex: 20,
+          maxWidth: isMobile ? 'calc(100vw - 24px)' : 280,
+        }}
+      >
+        <RelationFilter
+          metaRelations={data.meta_relations}
+          activeRelationIds={urlState.mr}
+          onToggleRelation={handleToggleRelation}
+          onToggleAll={handleToggleAllRelations}
+          breakthroughOnly={urlState.bt}
+          onToggleBreakthrough={() => setUrlState((s) => ({ ...s, bt: !s.bt }))}
+          onDemandOnly={urlState.od}
+          onToggleOnDemand={() => setUrlState((s) => ({ ...s, od: !s.od }))}
+          open={filterOpen}
+          onToggleOpen={() => setFilterOpen((v) => !v)}
+        />
+      </div>
+
+      {/* 右側: GraphControl (放置於 RelationFilter 下方) */}
+      <div
+        ref={ctrlRef}
+        style={{
+          position: 'absolute', top: ctrlTop, right: 12, zIndex: 25,
+          width: ctrlOpen ? (isMobile ? 'calc(100vw - 24px)' : 240) : 'auto',
+        }}
+      >
+        <GraphControl
+          open={ctrlOpen}
+          onToggleOpen={() => setCtrlOpen((v) => !v)}
+          fontSize={fontSize} onFontSize={setFontSize}
+          nodeScale={nodeScale} onNodeScale={setNodeScale}
+          charge={charge} onCharge={setCharge}
+          minDegree={minDegree} onMinDegree={setMinDegree}
+          spatialMode={spatialMode} onSpatialMode={setSpatialMode}
+          geoCount={spatialInfo.count}
+          onReset={resetGraphControl}
+        />
+      </div>
+
+      {/* 左下: Legend */}
+      <div style={{ position: 'absolute', bottom: timelineOpen ? 80 : 20, left: 12, zIndex: 20 }}>
+        <Legend metaGroups={data.meta_groups} />
+      </div>
+
+      {/* 右下: InfoCard */}
+      {selectedNode && (
         <div
-          ref={ctrlRef}
           style={{
-            position: 'absolute', top: ctrlTop, right: 12, zIndex: 25,
-            width: ctrlOpen ? (isMobile ? 'calc(100vw - 24px)' : 240) : 'auto',
+            position: 'absolute', bottom: timelineOpen ? 80 : 20, right: 12, zIndex: 30,
+            maxWidth: isMobile ? 'calc(100vw - 24px)' : 320,
           }}
         >
-          <GraphControl
-            open={ctrlOpen}
-            onToggleOpen={() => setCtrlOpen((v) => !v)}
-            fontSize={fontSize} onFontSize={setFontSize}
-            nodeScale={nodeScale} onNodeScale={setNodeScale}
-            charge={charge} onCharge={setCharge}
-            spatialMode={spatialMode} onSpatialMode={setSpatialMode}
-            geoCount={spatialInfo.count}
-            onReset={resetGraphControl}
+          <InfoCard
+            node={selectedNode}
+            links={data.links}
+            allNodes={data.nodes}
+            metaGroups={data.meta_groups}
+            metaRelations={data.meta_relations}
+            onClose={() => setSelectedId(null)}
+            onSelectNode={handleSelectNode}
           />
         </div>
       )}
 
-      {/* Minimap */}
-      {data && !isMobile && <Minimap graph={graphRef.current} bottomOffset={minimapBottom} />}
-
-      {/* InfoCard */}
-      {selected && (
-        <InfoCard
-          node={selected}
-          onClose={onClose}
-          onNodeClick={handleNodeClick}
-          allLinks={data?.links ?? []}
-          allNodesById={allNodesById}
-          width={infoCardWidth}
-          top={infoCardTop}
-          maxHeight={`calc(100vh - ${infoCardTop}px - ${sidePanelBottom}px)`}
+      {/* 底部中間: TimelineSlider */}
+      <div
+        style={{
+          position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 20,
+          width: isMobile ? 'calc(100vw - 24px)' : Math.min(600, window.innerWidth - 300),
+        }}
+      >
+        <TimelineSlider
+          yearRange={data.stats.year_range}
+          value={[yMin, yMax]}
+          onChange={(val) => setUrlState((s) => ({ ...s, years: val }))}
+          open={timelineOpen}
+          onToggleOpen={() => setTimelineOpen((v) => !v)}
         />
-      )}
+      </div>
 
-      {/* BottomBar：永遠 left:12 / right:12 */}
-      {data && urlState.years && (
-        <div
-          ref={bottomRef}
-          className="paper-card"
-          style={{
-            position: 'absolute', bottom: 12, left: 12, right: 12,
-            padding: '10px 16px 6px',
-            display: 'flex', flexDirection: 'column', gap: 8,
-            zIndex: 25,
-          }}
-        >
-          {/* Row 1: Timeline */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <TimelineSlider
-              min={data.stats.year_range[0]}
-              max={data.stats.year_range[1]}
-              value={urlState.years}
-              nodes={data.nodes}
-              onChange={(yrs) => setUrlState((s) => ({ ...s, years: yrs }))}
-              onlyDated={urlState.od}
-              onToggleOnlyDated={() => setUrlState((s) => ({ ...s, od: !s.od }))}
-            />
-          </div>
-
-          <hr className="divider" style={{ margin: '2px 0' }} />
-
-          {/* Row 2: Legend (groups) | Relations */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span className="tiny" style={{ color: 'var(--ink-faint)' }}>分類</span>
-            <Legend
-              metaGroups={data.meta_groups.filter((g) => g.count > 0)}
-              activeGroups={urlState.mg}
-              onToggleGroup={(id) => toggleSetIn('mg', id)}
-              onlyBreakthrough={urlState.bt}
-              onToggleBreakthrough={() => setUrlState((s) => ({ ...s, bt: !s.bt }))}
-              breakthroughCount={data.stats.breakthroughs}
-            />
-            {!isMobile && <div style={{ height: 22, width: 1, background: 'var(--ink-line)' }} />}
-            <span className="tiny" style={{ color: 'var(--ink-faint)' }}>關係</span>
-            <RelationFilter
-              metaRelations={data.meta_relations.filter((r) => r.count > 0)}
-              active={urlState.mr}
-              onToggle={(id) => toggleSetIn('mr', id)}
-            />
-          </div>
-
-          {/* Row 3: 版權（置中）*/}
-          <div
-            className="tiny"
-            style={{
-              borderTop: '1px solid var(--ink-line)',
-              paddingTop: 4, marginTop: 2,
-              textAlign: 'center',
-              color: 'var(--ink-faint)', fontSize: 10,
-              lineHeight: 1.5,
-            }}
-          >
-            © 國立陽明交通大學跨領域設計科學研究中心 (TDIS) ・ 曾聖凱 助理教授・
-            <a href="mailto:sky@arch.nycu.edu.tw" style={{ color: 'inherit', textDecoration: 'none' }}>
-              sky@arch.nycu.edu.tw
-            </a>
-          </div>
-        </div>
-      )}
+      {/* 右下角輔助: Minimap */}
+      <div style={{ position: 'absolute', bottom: 80, right: selectedNode ? (isMobile ? 12 : 344) : 12, zIndex: 15 }}>
+        <Minimap nodes={filtered?.nodes || []} />
+      </div>
     </div>
   );
+}
+
+function toggleSet(setObj, value) {
+  const next = new Set(setObj);
+  if (next.has(value)) {
+    next.delete(value);
+  } else {
+    next.add(value);
+  }
+  return next;
 }
