@@ -5,7 +5,6 @@
 import { getEdgeStyle, resolveColor } from './EdgeStyles.js';
 
 // ─── 節點半徑 ──────────────────────────────────
-// 依 degree（連結數）給予大小差異；無 degree 時退回 importance 或預設
 let _nodeSizeScale = 1;
 export function setNodeSizeScale(s) { _nodeSizeScale = Math.max(0.3, Math.min(3, s || 1)); }
 export function getNodeSizeScale() { return _nodeSizeScale; }
@@ -21,11 +20,14 @@ export function nodeRadius(node) {
   return base * _nodeSizeScale;
 }
 
-// ─── 節點形狀（依 meta_group）─────────────────
+// ─── 節點形狀與顏色繪製 ─────────────────
 export function drawNode(ctx, node, opts = {}) {
   const r = nodeRadius(node);
   const x = node.x, y = node.y;
-  const color = resolveColor(`--cat-${node.meta_group}`);
+  
+  // 優先採用 node 本身指定的 color
+  const color = node.color || resolveColor(`--cat-${node.meta_group}`) || '#888888';
+  
   const isSelected = opts.selected;
   const isHover = opts.hover;
   const isDimmed = opts.dimmed;
@@ -68,48 +70,42 @@ function drawShape(ctx, metaGroup, x, y, r) {
   ctx.beginPath();
   switch (metaGroup) {
     case '人物':
-      // 實心圓
       ctx.arc(x, y, r, 0, Math.PI * 2);
       break;
     case '組織':
-      // 圓 + 方框 (這裡用圓角矩形)
+    case '政府機關':
+    case '非營利組織':
+    case '私人企業':
+    case '大學':
+    case '在地學校':
+    case '群體':
       roundRect(ctx, x - r, y - r, r * 2, r * 2, 3);
       break;
     case '地景與聚落':
-      // 圓角矩形（橫向）
+    case '空間':
       roundRect(ctx, x - r * 1.1, y - r * 0.8, r * 2.2, r * 1.6, 3);
       break;
     case '事件':
-      // 六邊形
+    case '健康議題':
       hexagon(ctx, x, y, r);
       break;
     case '物質文化':
-      // 菱形
+    case '物件':
+    case '產業':
       ctx.moveTo(x, y - r);
       ctx.lineTo(x + r, y);
       ctx.lineTo(x, y + r);
       ctx.lineTo(x - r, y);
       ctx.closePath();
       break;
-    case '文獻':
-      // 書頁形（直立矩形 + 折角）
-      ctx.moveTo(x - r * 0.7, y - r);
-      ctx.lineTo(x + r * 0.5, y - r);
-      ctx.lineTo(x + r * 0.7, y - r * 0.7);
-      ctx.lineTo(x + r * 0.7, y + r);
-      ctx.lineTo(x - r * 0.7, y + r);
-      ctx.closePath();
-      break;
-    case '計畫與行動':
-      // 圓 + 虛線外圈（這裡用實心圓即可，外圈在 stroke 時處理）
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      break;
     default:
       ctx.arc(x, y, r, 0, Math.PI * 2);
+      break;
   }
 }
 
 function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);
   ctx.arcTo(x + w, y + h, x, y + h, r);
@@ -118,12 +114,13 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function hexagon(ctx, cx, cy, r) {
+function hexagon(ctx, x, y, r) {
+  ctx.beginPath();
   for (let i = 0; i < 6; i++) {
-    const a = (Math.PI / 3) * i - Math.PI / 2;
-    const x = cx + r * Math.cos(a);
-    const y = cy + r * Math.sin(a);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    const angle = (Math.PI / 3) * i - Math.PI / 2;
+    const px = x + r * Math.cos(angle);
+    const py = y + r * Math.sin(angle);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
   }
   ctx.closePath();
 }
@@ -132,90 +129,152 @@ function drawStar(ctx, cx, cy, r, color) {
   ctx.save();
   ctx.fillStyle = color;
   ctx.beginPath();
-  for (let i = 0; i < 8; i++) {
-    const a = (Math.PI / 4) * i - Math.PI / 2;
-    const rr = i % 2 === 0 ? r : r * 0.45;
-    const x = cx + rr * Math.cos(a);
-    const y = cy + rr * Math.sin(a);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  for (let i = 0; i < 5; i++) {
+    const a1 = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+    const a2 = a1 + Math.PI / 5;
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const x2 = cx + (r * 0.4) * Math.cos(a2), y2 = cy + (r * 0.4) * Math.sin(a2);
+    if (i === 0) ctx.moveTo(x1, y1); else ctx.lineTo(x1, y1);
+    ctx.lineTo(x2, y2);
   }
   ctx.closePath();
   ctx.fill();
   ctx.restore();
 }
 
-// ─── 邊 ───────────────────────────────────────
+// ─── 邊（Edges）繪製 ─────────────────────────────
 export function drawEdge(ctx, link, opts = {}) {
   const s = link.source, t = link.target;
-  if (!s || !t || typeof s.x !== 'number' || typeof t.x !== 'number') return;
+  if (s.x == null || t.x == null) return;
 
   const style = getEdgeStyle(link.meta_relation);
-  const isHighlighted = opts.highlighted;
   const isDimmed = opts.dimmed;
+  const isHighlighted = opts.highlighted;
+
+  // 優先採用 link 本身指定的 color
+  const color = link.color || resolveColor(style.color) || '#9c9180';
 
   ctx.save();
-  if (isDimmed) ctx.globalAlpha = 0.08;
-  else if (isHighlighted) ctx.globalAlpha = 0.95;
-  else ctx.globalAlpha = 0.5;
+  if (isDimmed) {
+    ctx.globalAlpha = 0.08;
+  } else if (isHighlighted) {
+    ctx.globalAlpha = 1.0;
+  } else {
+    ctx.globalAlpha = 0.45;
+  }
 
-  ctx.strokeStyle = resolveColor(style.color);
-  ctx.lineWidth = isHighlighted ? style.width * 1.8 : style.width;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = isHighlighted ? style.width * 2.2 : style.width;
 
   if (style.dash) ctx.setLineDash(style.dash);
-  else ctx.setLineDash([]);
 
-  ctx.beginPath();
-  // 輕微貝茲曲線：避免大量直線交織
-  const mx = (s.x + t.x) / 2;
-  const my = (s.y + t.y) / 2;
   const dx = t.x - s.x, dy = t.y - s.y;
-  const len = Math.sqrt(dx * dx + dy * dy);
-  // 法線方向偏移 (跟 link 雜湊有關，避免每次重新計算抖動)
-  const offset = (link._curveOffset ?? 0) * Math.min(len * 0.15, 30);
-  const nx = -dy / (len || 1);
-  const ny = dx / (len || 1);
-  const cx = mx + nx * offset;
-  const cy = my + ny * offset;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-  ctx.moveTo(s.x, s.y);
-  ctx.quadraticCurveTo(cx, cy, t.x, t.y);
-  ctx.stroke();
+  if (link._curveOffset && Math.abs(link._curveOffset) > 1) {
+    const mx = (s.x + t.x) / 2, my = (s.y + t.y) / 2;
+    const nx = -dy / dist, ny = dx / dist;
+    const cx = mx + nx * link._curveOffset;
+    const cy = my + ny * link._curveOffset;
 
-  // 箭頭
-  if (style.arrow) {
-    const tr = nodeRadius(t);
-    drawArrowHead(ctx, cx, cy, t.x, t.y, tr);
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.quadraticCurveTo(cx, cy, t.x, t.y);
+    ctx.stroke();
+
+    if (style.arrow) {
+      drawArrowOnCurve(ctx, cx, cy, t.x, t.y, nodeRadius(t), color);
+    }
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(t.x, t.y);
+    ctx.stroke();
+
+    if (style.arrow) {
+      drawArrowOnLine(ctx, s.x, s.y, t.x, t.y, nodeRadius(t), color);
+    }
   }
+
   ctx.restore();
 }
 
-function drawArrowHead(ctx, cx, cy, tx, ty, targetRadius) {
-  const dx = tx - cx, dy = ty - cy;
-  const a = Math.atan2(dy, dx);
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < targetRadius) return;
-  // 退到節點邊緣
-  const ex = tx - Math.cos(a) * targetRadius;
-  const ey = ty - Math.sin(a) * targetRadius;
-  const sz = 6;
+function drawArrowOnLine(ctx, x1, y1, x2, y2, targetR, color) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+  const ux = dx / dist, uy = dy / dist;
+  const ax = x2 - ux * (targetR + 3);
+  const ay = y2 - uy * (targetR + 3);
+
+  const headLen = 7;
+  const angle = Math.atan2(dy, dx);
+
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.setLineDash([]);
   ctx.beginPath();
-  ctx.moveTo(ex, ey);
-  ctx.lineTo(ex - sz * Math.cos(a - 0.4), ey - sz * Math.sin(a - 0.4));
-  ctx.lineTo(ex - sz * Math.cos(a + 0.4), ey - sz * Math.sin(a + 0.4));
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(
+    ax - headLen * Math.cos(angle - Math.PI / 6),
+    ay - headLen * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.lineTo(
+    ax - headLen * Math.cos(angle + Math.PI / 6),
+    ay - headLen * Math.sin(angle + Math.PI / 6)
+  );
   ctx.closePath();
-  ctx.fillStyle = ctx.strokeStyle;
   ctx.fill();
+  ctx.restore();
 }
 
-// 給每條 link 隨機曲度（同次刷新固定）
+function drawArrowOnCurve(ctx, cx, cy, x2, y2, targetR, color) {
+  const dx = x2 - cx, dy = y2 - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+  const ux = dx / dist, uy = dy / dist;
+  const ax = x2 - ux * (targetR + 3);
+  const ay = y2 - uy * (targetR + 3);
+
+  const headLen = 7;
+  const angle = Math.atan2(dy, dx);
+
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(
+    ax - headLen * Math.cos(angle - Math.PI / 6),
+    ay - headLen * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.lineTo(
+    ax - headLen * Math.cos(angle + Math.PI / 6),
+    ay - headLen * Math.sin(angle + Math.PI / 6)
+  );
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
 export function assignCurveOffsets(links) {
+  const pairCount = new Map();
   for (const l of links) {
-    if (l._curveOffset === undefined) {
-      // 用 source/target id 雜湊，穩定不抖動
-      const a = (l.source.id || l.source) + '|' + (l.target.id || l.target);
-      let h = 0;
-      for (let i = 0; i < a.length; i++) h = ((h << 5) - h + a.charCodeAt(i)) | 0;
-      l._curveOffset = ((h % 200) / 100) - 1; // -1..1
+    const s = typeof l.source === 'object' ? l.source.id : l.source;
+    const t = typeof l.target === 'object' ? l.target.id : l.target;
+    const key = s < t ? `${s}|${t}` : `${t}|${s}`;
+    if (!pairCount.has(key)) pairCount.set(key, []);
+    pairCount.get(key).push(l);
+  }
+
+  for (const group of pairCount.values()) {
+    if (group.length <= 1) {
+      group[0]._curveOffset = 0;
+      continue;
     }
+    const n = group.length;
+    const step = 22;
+    const start = -((n - 1) * step) / 2;
+    group.forEach((link, idx) => {
+      link._curveOffset = start + idx * step;
+    });
   }
 }
