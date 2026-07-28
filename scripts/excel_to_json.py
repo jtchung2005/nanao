@@ -6,12 +6,18 @@ import urllib.parse
 # 1. 請確認這是您的 Google Sheet ID
 SPREADSHEET_ID = "1X7gYxlJaUcbzPNgeLO-hjsz1tVGc7TZDAB5817B8BaI"
 
+import pandas as pd
+import urllib.parse
+
 def get_sheet_df(sheet_name):
     encoded_name = urllib.parse.quote(sheet_name)
     url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_name}"
     print(f"正在嘗試讀取工作表 [{sheet_name}]...")
-    df = pd.read_csv(url)
-    # 清理欄位名稱：去除前後空白
+    
+    # 💡 使用 sep=None, engine='python' 讓 pandas 自動判定是逗號 (,) 還是 Tab (\t)
+    df = pd.read_csv(url, sep=None, engine='python')
+    
+    # 清理欄位名稱前後空白
     df.columns = df.columns.astype(str).str.strip()
     return df
 
