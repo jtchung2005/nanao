@@ -3,19 +3,17 @@ import json
 import os
 import urllib.parse
 
-# 1. 請確認這是您的 Google Sheet ID
+# 1. 填入您的 Google Sheet ID
 SPREADSHEET_ID = "1X7gYxlJaUcbzPNgeLO-hjsz1tVGc7TZDAB5817B8BaI"
-
-import pandas as pd
-import urllib.parse
 
 def get_sheet_df(sheet_name):
     encoded_name = urllib.parse.quote(sheet_name)
-    url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_name}"
+    # 💡 使用 Google Sheets 官方標準 CSV 匯出網址 (/export?format=csv)
+    url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&sheet={encoded_name}"
     print(f"正在嘗試讀取工作表 [{sheet_name}]...")
     
-    # 💡 使用 sep=None, engine='python' 讓 pandas 自動判定是逗號 (,) 還是 Tab (\t)
-    df = pd.read_csv(url, sep=None, engine='python')
+    # 讀取 CSV
+    df = pd.read_csv(url)
     
     # 清理欄位名稱前後空白
     df.columns = df.columns.astype(str).str.strip()
@@ -28,7 +26,10 @@ try:
     df_n_color = get_sheet_df('nodes_color')
     df_l_color = get_sheet_df('links_color')
 
-    # 動態匹配 nodes_ALL 欄位名稱 (不分大小寫)
+    # 印出欄位確認
+    print(f"nodes_ALL 成功讀取欄位: {list(df_nodes.columns)}")
+
+    # 動態匹配 nodes_ALL 欄位名稱
     id_col = next((col for col in df_nodes.columns if col.lower() == 'id'), None)
     group_col = next((col for col in df_nodes.columns if col.lower() in ['node_group', 'group']), 'node_Group')
     info_col = next((col for col in df_nodes.columns if col.lower() == 'info'), 'info')
@@ -51,7 +52,6 @@ try:
 
     nodes = []
     for _, row in df_nodes.iterrows():
-        # 修正點：使用變數 id_col 檢查，而非寫死的 'id'
         if pd.isna(row[id_col]) or str(row[id_col]).strip() == '':
             continue
             
