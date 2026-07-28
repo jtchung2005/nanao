@@ -1,15 +1,15 @@
 /*
  * 依 meta_relation 取得邊的視覺樣式。
- * 顏色取自 CSS 變數，這樣可隨 token 變更。
+ * 全部將 dash 設為 null 以呈現實線。
  */
 
 const STYLES = {
-  spatial:     { color: '--rel-spatial',     width: 1.4, dash: null,        arrow: false },
-  social:      { color: '--rel-social',      width: 1.0, dash: null,        arrow: false },
-  causal:      { color: '--rel-causal',      width: 1.2, dash: [6, 4],      arrow: true  },
-  creative:    { color: '--rel-creative',    width: 1.0, dash: [2, 3],      arrow: false },
-  documentary: { color: '--rel-documentary', width: 0.8, dash: [1, 3],      arrow: false },
-  '其他':      { color: '--rel-其他',        width: 0.7, dash: [1, 4],      arrow: false },
+  spatial:     { color: '--rel-spatial',     width: 1.4, dash: null, arrow: false },
+  social:      { color: '--rel-social',      width: 1.0, dash: null, arrow: false },
+  causal:      { color: '--rel-causal',      width: 1.2, dash: null, arrow: true  },
+  creative:    { color: '--rel-creative',    width: 1.0, dash: null, arrow: false },
+  documentary: { color: '--rel-documentary', width: 0.8, dash: null, arrow: false },
+  '其他':      { color: '--rel-其他',        width: 0.7, dash: null, arrow: false },
 };
 
 export function getEdgeStyle(metaRelation) {
