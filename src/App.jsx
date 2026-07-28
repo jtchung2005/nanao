@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import useGraphData from './state/useGraphData';
+import { useGraphData } from './state/useGraphData';
 import useUrlState from './state/useUrlState';
 import ForceGraph from './graph/ForceGraph';
 import GroupSidebar from './panels/GroupSidebar';
