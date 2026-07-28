@@ -7,7 +7,7 @@ export default function GraphControl({
   fontSize, onFontSize,
   nodeScale, onNodeScale,
   charge, onCharge,
-  minDegree = 0, onMinDegree, // 👈 新增度數篩選 props
+  minDegree = 0, onMinDegree,
   spatialMode, onSpatialMode, geoCount = 0,
   open, onToggleOpen,
   onReset,
@@ -70,7 +70,6 @@ export default function GraphControl({
       )}
       <hr className="divider" style={{ margin: '0' }} />
 
-      {/* 👇 新增：節點重要性 (連線數量) 拉霸 */}
       {onMinDegree && (
         <Slider
           label="節點重要性 (最少連線)"
