@@ -1,4 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+
+// ⚠️ 必須匯入樣式檔，否則 CSS 變數與底層樣式無法作用導致白屏！
+import './index.css';
+import './styles/tokens.css';
+import './styles/paper.css';
+
 import { useGraphData } from './state/useGraphData';
 import { useUrlState } from './state/useUrlState';
 import { ForceGraph } from './graph/ForceGraph';
@@ -17,6 +23,8 @@ const DEFAULTS = { fontSize: 12, nodeScale: 1.0, charge: -360, minDegree: 0 };
 export default function App() {
   const { data, loading, error } = useGraphData();
   const [urlState, setUrlState] = useUrlState(data);
+
+  // ... (其餘 App.jsx 保持不變)
 
   // 控制面板滑軌狀態
   const [fontSize, setFontSize] = useState(DEFAULTS.fontSize);
