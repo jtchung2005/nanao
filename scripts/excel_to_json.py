@@ -94,10 +94,13 @@ try:
             'date': str(row[date_col]) if date_col in row and pd.notna(row[date_col]) else '',
             'color': link_colors.get(label, '#CCCCCC')
         })
-
-    os.makedirs('public', exist_ok=True)
-    with open('public/data.json', 'w', encoding='utf-8') as f:
+    # 把這段：
+    # with open('public/data.json', 'w', encoding='utf-8') as f:
+    # 改成：
+    os.makedirs('data', exist_ok=True)
+    with open('data/graph.json', 'w', encoding='utf-8') as f:    
         json.dump({'nodes': nodes, 'links': links, 'node_colors': node_colors, 'link_colors': link_colors}, f, ensure_ascii=False, indent=2)
+    
 
     print("成功！已從 Google Sheets 更新並產生 public/data.json")
 
