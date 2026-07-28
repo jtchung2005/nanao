@@ -97,18 +97,16 @@ export function ForceGraph({
     }
   };
 
-  return (
-    <canvas
-      ref={canvasRef}
-      onClick={handleClick}
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'block',
-        cursor: 'grab',
-      }}
-    />
-  );
+return React.createElement('canvas', {
+    ref: canvasRef,
+    onClick: handleClick,
+    style: {
+      width: '100%',
+      height: '100%',
+      display: 'block',
+      cursor: 'grab',
+    },
+  });
 }
 
 export default ForceGraph;
