@@ -1,8 +1,8 @@
 import React from 'react';
 
 /**
- * meta_group 圖例（chip 列）+ 「★ 只看突破點」 toggle。
- * 預設使用 horizontal 模式（融入底部控制列）。
+ * 節點分類圖例 (Legend)
+ * 直接讀取 g.color，不再依賴固定 CSS 變數
  */
 export default function Legend({
   metaGroups, activeGroups, onToggleGroup,
@@ -12,6 +12,7 @@ export default function Legend({
     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
       {metaGroups.map((g) => {
         const on = activeGroups.has(g.id);
+        const circleColor = g.color || '#888888'; // 直接使用動態顏色
         return (
           <button
             key={g.id}
@@ -23,7 +24,17 @@ export default function Legend({
             }}
             title={`${g.id}（${g.count}）`}
           >
-            <span className="chip-dot" style={{ background: `var(--cat-${g.id})` }} />
+            <span 
+              className="chip-dot" 
+              style={{ 
+                display: 'inline-block',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                marginRight: 4,
+                backgroundColor: circleColor 
+              }} 
+            />
             <span>{g.id}</span>
             <span className="tiny num" style={{ marginLeft: 2 }}>{g.count}</span>
           </button>
