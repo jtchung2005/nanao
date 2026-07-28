@@ -5,7 +5,6 @@ import React, { useMemo } from 'react';
  * - chevron：展開 / 收合
  * - meta_group 標籤：點擊以高亮整群節點
  * - subgroup 標籤：點擊以高亮該子群節點
- * - 每個 meta_group 之間有分割線
  */
 export default function GroupSidebar({
   nodes, onPickNodeGroup, onPickNode, onHighlightIds,
@@ -56,6 +55,11 @@ export default function GroupSidebar({
         const isCollapsed = collapsed.has(mg);
         const groupKey = `mg:${mg}`;
         const groupActive = activeHighlightKey === groupKey;
+
+        // 檢查是否有「非重複」的真實子群
+        const subEntries = Object.entries(subs);
+        const hasRealSubgroups = subEntries.some(([ng]) => ng !== mg);
+
         return (
           <React.Fragment key={mg}>
             {idx > 0 && <hr className="divider" style={{ margin: '6px 0' }} />}
@@ -67,9 +71,17 @@ export default function GroupSidebar({
                   background: groupActive ? 'var(--breakthrough-soft)' : 'transparent',
                 }}
               >
+                {/* 只有在存在真實不同子群時才顯示展開/收合箭頭 */}
                 <span
-                  style={{ width: 12, fontSize: 10, color: 'var(--ink-faint)', cursor: 'pointer' }}
+                  style={{
+                    width: 12,
+                    fontSize: 10,
+                    color: 'var(--ink-faint)',
+                    cursor: hasRealSubgroups ? 'pointer' : 'default',
+                    visibility: hasRealSubgroups ? 'visible' : 'hidden'
+                  }}
                   onClick={() => {
+                    if (!hasRealSubgroups) return;
                     const ns = new Set(collapsed);
                     if (isCollapsed) ns.delete(mg); else ns.add(mg);
                     setCollapsed(ns);
@@ -78,7 +90,9 @@ export default function GroupSidebar({
                 >
                   {isCollapsed ? '▸' : '▾'}
                 </span>
+
                 <span className="chip-dot" style={{ background: `var(--cat-${mg})` }} />
+                
                 <span
                   className="caption"
                   style={{ flex: 1, fontWeight: 600, cursor: 'pointer' }}
@@ -87,19 +101,26 @@ export default function GroupSidebar({
                     for (const arr of Object.values(subs)) for (const n of arr) ids.add(n.id);
                     onHighlightIds?.(ids, groupKey);
                   }}
-                  title="高亮此 meta_group"
-                >{mg}</span>
+                  title="高亮此類別"
+                >
+                  {mg}
+                </span>
+
                 <span
                   className="tiny"
                   style={{ cursor: 'pointer', color: 'var(--ink-faint)' }}
                   onClick={() => onPickNodeGroup?.(mg)}
-                  title="僅顯示此 meta_group"
+                  title="僅顯示此類別"
                 >⊙</span>
                 <span className="tiny num">{totalCount}</span>
               </div>
-              {!isCollapsed && (
+
+              {/* 只有在非收合狀態，且確實有不同的子群（ng !== mg）時才繪製子層 */}
+              {!isCollapsed && hasRealSubgroups && (
                 <div style={{ paddingLeft: 22 }}>
-                  {Object.entries(subs).map(([ng, arr]) => {
+                  {subEntries.map(([ng, arr]) => {
+                    if (ng === mg) return null; // 排除跟母層同名的贅餘項目
+
                     const subKey = `sg:${mg}/${ng}`;
                     const subActive = activeHighlightKey === subKey;
                     return (
@@ -120,6 +141,7 @@ export default function GroupSidebar({
                           <span style={{ flex: 1, color: 'var(--ink-secondary)' }}>{ng}</span>
                           <span className="num">{arr.length}</span>
                         </div>
+                        
                         {arr.length <= 8 && (
                           <div style={{ paddingLeft: 6, marginTop: 2 }}>
                             {arr.slice(0, 8).map((n) => (
