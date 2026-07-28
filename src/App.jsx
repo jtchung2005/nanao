@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useGraphData } from './state/useGraphData';
 import { useUrlState } from './state/useUrlState';
-import ForceGraph from './graph/ForceGraph';
+import { ForceGraph } from './graph/ForceGraph';
 import GroupSidebar from './panels/GroupSidebar';
 import RelationFilter from './panels/RelationFilter';
 import TimelineSlider from './panels/TimelineSlider';
@@ -10,7 +10,7 @@ import InfoCard from './panels/InfoCard';
 import Minimap from './panels/Minimap';
 import GraphControl from './panels/GraphControl';
 import Legend from './panels/Legend';
-import highlightNodesAndLinks from './utils/highlight';
+import { highlightNodesAndLinks } from './utils/highlight';
 
 const DEFAULTS = { fontSize: 12, nodeScale: 1.0, charge: -360, minDegree: 0 };
 
