@@ -56,6 +56,10 @@ export default function GroupSidebar({
         const groupKey = `mg:${mg}`;
         const groupActive = activeHighlightKey === groupKey;
 
+        // 取出該分群的第一個節點以獲取動態分配的顏色
+        const sampleNode = Object.values(subs)[0]?.[0];
+        const groupColor = sampleNode?.color || `var(--cat-${mg})` || '#888888';
+
         // 檢查是否有「非重複」的真實子群
         const subEntries = Object.entries(subs);
         const hasRealSubgroups = subEntries.some(([ng]) => ng !== mg);
@@ -91,8 +95,9 @@ export default function GroupSidebar({
                   {isCollapsed ? '▸' : '▾'}
                 </span>
 
-                <span className="chip-dot" style={{ background: `var(--cat-${mg})` }} />
-                
+                {/* 使用動態取到的 groupColor */}
+                <span className="chip-dot" style={{ background: groupColor }} />
+
                 <span
                   className="caption"
                   style={{ flex: 1, fontWeight: 600, cursor: 'pointer' }}
@@ -115,11 +120,11 @@ export default function GroupSidebar({
                 <span className="tiny num">{totalCount}</span>
               </div>
 
-              {/* 只有在非收合狀態，且確實有不同的子群（ng !== mg）時才繪製子層 */}
+              {/* 只有在非收合狀態，且確實有不同的子群時才繪製子層 */}
               {!isCollapsed && hasRealSubgroups && (
                 <div style={{ paddingLeft: 22 }}>
                   {subEntries.map(([ng, arr]) => {
-                    if (ng === mg) return null; // 排除跟母層同名的贅餘項目
+                    if (ng === mg) return null; // 排除跟母層同名的項目
 
                     const subKey = `sg:${mg}/${ng}`;
                     const subActive = activeHighlightKey === subKey;
@@ -141,7 +146,7 @@ export default function GroupSidebar({
                           <span style={{ flex: 1, color: 'var(--ink-secondary)' }}>{ng}</span>
                           <span className="num">{arr.length}</span>
                         </div>
-                        
+
                         {arr.length <= 8 && (
                           <div style={{ paddingLeft: 6, marginTop: 2 }}>
                             {arr.slice(0, 8).map((n) => (
