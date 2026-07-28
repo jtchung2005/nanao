@@ -4,8 +4,8 @@ on:
   push:
     branches: [ main, master ]
   schedule:
-    - cron: '0 22 * * *'  # 每天台灣時間早上 6:00
-  workflow_dispatch:
+    - cron: '0 22 * * *'  # 每天台灣時間早上 06:00 自動定時更新
+  workflow_dispatch:       # 支援在 GitHub 頁面上手動按鈕觸發更新
 
 permissions:
   contents: read
@@ -26,25 +26,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 1. 安裝 Python 環境
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Install Python Dependencies
+      # 2. 安裝套件並執行抓取 Google Sheet 資料腳本
+      - name: Fetch Google Sheets Data
         run: |
-          python -m pip install --upgrade pip
           pip install pandas
-
-      - name: Fetch Google Sheets & Convert to JSON
-        run: |
           python scripts/excel_to_json.py
 
+      # 3. 安裝 Node.js 環境
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'  # 👈 升級到 Node.js 20
+          node-version: '20'
 
+      # 4. 安裝前端套件並打包網站
       - name: Install Dependencies & Build
         run: |
           npm ci
