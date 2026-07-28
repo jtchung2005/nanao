@@ -1,13 +1,13 @@
 import React from 'react';
 
 /**
- * 圖譜控制面板：文字大小 / 節點大小 / 節點斥力 三個滑軌。
- * 由 App 控管 state，傳入 onChange。
+ * 圖譜控制面板：文字大小 / 節點大小 / 節點斥力 / 最小連線數 滑軌。
  */
 export default function GraphControl({
   fontSize, onFontSize,
   nodeScale, onNodeScale,
   charge, onCharge,
+  minDegree = 0, onMinDegree, // 👈 新增度數篩選 props
   spatialMode, onSpatialMode, geoCount = 0,
   open, onToggleOpen,
   onReset,
@@ -69,6 +69,17 @@ export default function GraphControl({
         </label>
       )}
       <hr className="divider" style={{ margin: '0' }} />
+
+      {/* 👇 新增：節點重要性 (連線數量) 拉霸 */}
+      {onMinDegree && (
+        <Slider
+          label="節點重要性 (最少連線)"
+          value={minDegree}
+          min={0} max={10} step={1}
+          suffix=" 條"
+          onChange={onMinDegree}
+        />
+      )}
 
       <Slider
         label="文字大小"
