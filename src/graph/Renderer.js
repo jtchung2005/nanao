@@ -1,225 +1,78 @@
-/*
- * Canvas 繪製器：節點（依 meta_group 用不同形狀）、邊（依 meta_relation 樣式）。
- * 全部用 device-pixel 繪製；座標已是 simulation 給的世界座標，由呼叫端套 transform。
- */
-import { getEdgeStyle, resolveColor } from './EdgeStyles.js';
+import { quadtree } from 'd3-quadtree';
 
-// ─── 節點半徑 ──────────────────────────────────
-// 依 degree（連結數）給予大小差異；無 degree 時退回 importance 或預設
-let _nodeSizeScale = 1;
-export function setNodeSizeScale(s) { _nodeSizeScale = Math.max(0.3, Math.min(3, s || 1)); }
-export function getNodeSizeScale() { return _nodeSizeScale; }
-
-export function nodeRadius(node) {
-  let base;
-  if (node._degree != null) {
-    base = 6 + Math.sqrt(node._degree) * 2.4;
-  } else {
-    const imp = node.importance ?? 3;
-    base = 7 + imp * 1.6;
-  }
-  return base * _nodeSizeScale;
-}
-
-// ─── 節點形狀（依 meta_group）─────────────────
-export function drawNode(ctx, node, opts = {}) {
-  const r = nodeRadius(node);
-  const x = node.x, y = node.y;
-  const color = node.color || resolveColor(`--cat-${node.meta_group}`) || '#888888';
-  const isSelected = opts.selected;
-  const isHover = opts.hover;
-  const isDimmed = opts.dimmed;
-  const hasBreakthrough = !!node.breakthrough_note;
-
-  ctx.save();
-  if (isDimmed) ctx.globalAlpha = 0.18;
-
-  // 突破點光暈
-  if (hasBreakthrough) {
-    const grad = ctx.createRadialGradient(x, y, r * 0.5, x, y, r * 2.2);
-    grad.addColorStop(0, resolveColor('--breakthrough', 0.5));
-    grad.addColorStop(1, resolveColor('--breakthrough', 0));
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(x, y, r * 2.2, 0, Math.PI * 2);
-    ctx.fill();
+export class GraphRenderer {
+  constructor(canvas, options = {}) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.options = options;
+    this.transform = { x: 0, y: 0, k: 1 };
   }
 
-  // 主形狀
-  ctx.fillStyle = color;
-  ctx.strokeStyle = isSelected
-    ? resolveColor('--breakthrough')
-    : resolveColor('--ink-primary', 0.75);
-  ctx.lineWidth = isSelected ? 2.5 : (isHover ? 1.8 : 1.0);
-
-  drawShape(ctx, node.meta_group, x, y, r);
-  ctx.fill();
-  ctx.stroke();
-
-  // 突破點 ★
-  if (hasBreakthrough) {
-    drawStar(ctx, x + r * 0.7, y - r * 0.7, 4, resolveColor('--breakthrough'));
+  setTransform(transform) {
+    this.transform = transform;
   }
 
-  ctx.restore();
-}
+  render(nodes, links, options = {}) {
+    const { ctx, canvas, transform } = this;
+    if (!ctx || !canvas) return;
 
-function drawShape(ctx, metaGroup, x, y, r) {
-  ctx.beginPath();
-  switch (metaGroup) {
-    case '人物':
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      break;
-    case '組織':
-      roundRect(ctx, x - r, y - r, r * 2, r * 2, 3);
-      break;
-    case '地景與聚落':
-    case '空間':
-      roundRect(ctx, x - r * 1.1, y - r * 0.8, r * 2.2, r * 1.6, 3);
-      break;
-    case '事件':
-      hexagon(ctx, x, y, r);
-      break;
-    case '物質文化':
-    case '物件':
-      ctx.moveTo(x, y - r);
-      ctx.lineTo(x + r, y);
-      ctx.lineTo(x, y + r);
-      ctx.lineTo(x - r, y);
-      ctx.closePath();
-      break;
-    case '文獻':
-      ctx.moveTo(x - r * 0.7, y - r);
-      ctx.lineTo(x + r * 0.5, y - r);
-      ctx.lineTo(x + r * 0.7, y - r * 0.7);
-      ctx.lineTo(x + r * 0.7, y + r);
-      ctx.lineTo(x - r * 0.7, y + r);
-      ctx.closePath();
-      break;
-    case '計畫與行動':
-    case '行動/活動':
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      break;
-    default:
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-  }
-}
+    const width = canvas.width;
+    const height = canvas.height;
 
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
+    ctx.save();
+    ctx.clearRect(0, 0, width, height);
 
-function hexagon(ctx, cx, cy, r) {
-  for (let i = 0; i < 6; i++) {
-    const a = (Math.PI / 3) * i - Math.PI / 2;
-    const x = cx + r * Math.cos(a);
-    const y = cy + r * Math.sin(a);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  }
-  ctx.closePath();
-}
+    // 套用 Zoom/Pan 變換
+    ctx.translate(transform.x, transform.y);
+    ctx.scale(transform.k, transform.k);
 
-function drawStar(ctx, cx, cy, r, color) {
-  ctx.save();
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  for (let i = 0; i < 8; i++) {
-    const a = (Math.PI / 4) * i - Math.PI / 2;
-    const rr = i % 2 === 0 ? r : r * 0.45;
-    const x = cx + rr * Math.cos(a);
-    const y = cy + rr * Math.sin(a);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  }
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
+    const fontSize = options.fontSize || 12;
+    const nodeScale = options.nodeScale || 1.0;
 
-// ─── 邊（連線） ───────────────────────────────────────
-export function drawEdge(ctx, link, opts = {}) {
-  const s = link.source, t = link.target;
-  if (!s || !t || typeof s.x !== 'number' || typeof t.x !== 'number') return;
+    // 1. 繪製邊 (Links)
+    for (const link of links) {
+      if (link.opacity === 0) continue;
+      const source = typeof link.source === 'object' ? link.source : null;
+      const target = typeof link.target === 'object' ? link.target : null;
+      if (!source || !target) continue;
 
-  const style = getEdgeStyle(link.meta_relation);
-  const isHighlighted = opts.highlighted;
-  const isDimmed = opts.dimmed;
-
-  ctx.save();
-  if (isDimmed) ctx.globalAlpha = 0.08;
-  else if (isHighlighted) ctx.globalAlpha = 0.95;
-  else ctx.globalAlpha = 0.5;
-
-  ctx.strokeStyle = link.color || resolveColor(style.color) || '#999999';
-  ctx.lineWidth = isHighlighted ? style.width * 1.8 : style.width;
-
-  if (style.dash) ctx.setLineDash(style.dash);
-  else ctx.setLineDash([]);
-
-  ctx.beginPath();
-  
-  // 彎曲弧度計算
-  const mx = (s.x + t.x) / 2;
-  const my = (s.y + t.y) / 2;
-  const dx = t.x - s.x, dy = t.y - s.y;
-  const len = Math.sqrt(dx * dx + dy * dy);
-  
-  // 調整弧度大小：提升控制點偏移量以強化彎曲感 (最高偏移 45px)
-  const curveVal = link._curveOffset ?? 0.3;
-  const offset = curveVal * Math.min(len * 0.25, 45);
-  
-  const nx = -dy / (len || 1);
-  const ny = dx / (len || 1);
-  const cx = mx + nx * offset;
-  const cy = my + ny * offset;
-
-  ctx.moveTo(s.x, s.y);
-  ctx.quadraticCurveTo(cx, cy, t.x, t.y);
-  ctx.stroke();
-
-  // 箭頭
-  if (style.arrow) {
-    const tr = nodeRadius(t);
-    drawArrowHead(ctx, cx, cy, t.x, t.y, tr);
-  }
-  ctx.restore();
-}
-
-function drawArrowHead(ctx, cx, cy, tx, ty, targetRadius) {
-  const dx = tx - cx, dy = ty - cy;
-  const a = Math.atan2(dy, dx);
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < targetRadius) return;
-  // 退到節點邊緣
-  const ex = tx - Math.cos(a) * targetRadius;
-  const ey = ty - Math.sin(a) * targetRadius;
-  const sz = 6;
-  ctx.beginPath();
-  ctx.moveTo(ex, ey);
-  ctx.lineTo(ex - sz * Math.cos(a - 0.4), ey - sz * Math.sin(a - 0.4));
-  ctx.lineTo(ex - sz * Math.cos(a + 0.4), ey - sz * Math.sin(a + 0.4));
-  ctx.closePath();
-  ctx.fillStyle = ctx.strokeStyle;
-  ctx.fill();
-}
-
-// 給每條 link 賦予弧度偏移值
-export function assignCurveOffsets(links) {
-  for (const l of links) {
-    if (l._curveOffset === undefined) {
-      // 用 source/target id 雜湊，保持每次渲染結果一致且穩定
-      const a = (l.source.id || l.source) + '|' + (l.target.id || l.target);
-      let h = 0;
-      for (let i = 0; i < a.length; i++) h = ((h << 5) - h + a.charCodeAt(i)) | 0;
-      
-      // 計算出一個在 0.2 ~ 0.6 之間的彎曲係數（並根據雜湊正負決定向上彎或向下彎）
-      const dir = (h % 2 === 0) ? 1 : -1;
-      const magnitude = 0.25 + (Math.abs(h % 100) / 100) * 0.35; // 0.25 ~ 0.60
-      l._curveOffset = dir * magnitude;
+      ctx.beginPath();
+      ctx.moveTo(source.x, source.y);
+      ctx.lineTo(target.x, target.y);
+      ctx.globalAlpha = link.opacity ?? 0.6;
+      ctx.strokeStyle = link.color || '#999';
+      ctx.lineWidth = link.isConnected ? 2.5 : 1;
+      ctx.stroke();
     }
+
+    // 2. 繪製點 (Nodes)
+    for (const node of nodes) {
+      if (node.opacity === 0) continue;
+      const r = (node.r || 6) * nodeScale;
+
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
+      ctx.globalAlpha = node.opacity ?? 1;
+      ctx.fillStyle = node.color || '#4A90E2';
+      ctx.fill();
+
+      // 選中或目標節點外框
+      if (node.isTarget || node.isSelected) {
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#333';
+        ctx.stroke();
+      }
+
+      // 標籤文字
+      if (node.label && (transform.k > 0.8 || node.isTarget || node.isNeighbor)) {
+        ctx.font = `${fontSize}px sans-serif`;
+        ctx.fillStyle = '#222';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(node.label, node.x, node.y + r + 2);
+      }
+    }
+
+    ctx.restore();
   }
 }
