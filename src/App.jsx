@@ -10,7 +10,7 @@ import InfoCard from './panels/InfoCard';
 import Minimap from './panels/Minimap';
 import GraphControl from './panels/GraphControl';
 import Legend from './panels/Legend';
-import { highlightNodesAndLinks } from './utils/highlight';
+import highlightNodesAndLinks from './utils/highlight';
 
 const DEFAULTS = { fontSize: 12, nodeScale: 1.0, charge: -360, minDegree: 0 };
 
