@@ -1,13 +1,23 @@
-<!doctype html>
-<html lang="zh-Hant">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="南澳知識圖譜 — Klesan 群人文地景數位典藏 " />
-    <title>南澳知識圖譜</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
+<section id="interactive-map-section" class="interactive-map-container">
+  <div class="section-header">
+    <h2 class="section-title">南澳記憶互動知識圖譜</h2>
+    <p class="section-subtitle">拖曳探索人物、事件、空間與地方創生網絡，可透過右側面板過濾主題與時間軸</p>
+  </div>
+
+  <div class="map-iframe-wrapper">
+    <iframe 
+      src="https://jtchung2005.github.io/nanao/" 
+      title="南澳記憶互動知識圖譜"
+      loading="lazy"
+      allow="fullscreen"
+      allowfullscreen>
+    </iframe>
+  </div>
+
+  <div class="map-footer-tips">
+    <span>💡 操作小撇步：雙指或滾輪可縮放圖譜，點擊節點可查看詳細歷史故事與關聯。</span>
+    <a href="https://jtchung2005.github.io/nanao/" target="_blank" rel="noopener noreferrer" class="fullscreen-link">
+      全螢幕開啟圖譜 ↗
+    </a>
+  </div>
+</section>
