@@ -37,10 +37,21 @@ const DEFAULT_LINK_COLORS = {
   其他: '#CCCCCC',
 };
 
+// 容錯解析年份函式（支援 number, string 以及多種欄位命名）
+function parseYear(val) {
+  if (val === null || val === undefined) return null;
+  if (typeof val === 'number' && Number.isFinite(val)) return val;
+  if (typeof val === 'string') {
+    const parsed = parseInt(val.trim(), 10);
+    return isNaN(parsed) ? null : parsed;
+  }
+  return null;
+}
+
 function computeYearRange(nodes) {
   let min = Infinity, max = -Infinity;
   for (const n of nodes) {
-    for (const y of [n.start_year, n.end_year]) {
+    for (const y of [n.year, n.start_year, n.end_year]) {
       if (typeof y === 'number' && Number.isFinite(y)) {
         if (y < min) min = y;
         if (y > max) max = y;
@@ -60,26 +71,32 @@ export function normalizeGraph(raw) {
   const nodeColors = { ...DEFAULT_NODE_COLORS, ...(raw.node_colors || {}) };
   const linkColors = { ...DEFAULT_LINK_COLORS, ...(raw.link_colors || {}) };
 
-  // 1) 處理節點（直接採用 raw.group 或 n.group）
+  // 1) 處理節點（加上年份多屬性解析與數值轉換）
   const nodes = rawNodes
     .filter((n) => n.group !== '自動增加')
     .map((n) => {
       const groupName = (n.group || '其他').trim();
+      
+      // 解析年份（同時支援 start_year, year, date, time）
+      const parsedStartYear = parseYear(n.start_year ?? n.year ?? n.date ?? n.time);
+      const parsedEndYear = parseYear(n.end_year);
+
       return {
         ...n,
         node_Group: groupName,
-        meta_group: groupName, // 直接使用原始分類名稱，不再映射大分類
+        meta_group: groupName,
         color: n.color || nodeColors[groupName] || '#888888',
         breakthrough_note: n.breakthrough_note || '',
         sources: n.sources || [],
-        start_year: typeof n.start_year === 'number' ? n.start_year : null,
-        end_year: typeof n.end_year === 'number' ? n.end_year : null,
+        year: parsedStartYear,               // 💡 補上時間軸最常讀取的 year
+        start_year: parsedStartYear,         // 💡 轉為安全的數字或 null
+        end_year: parsedEndYear,
       };
     });
 
   const idSet = new Set(nodes.map((n) => n.id));
 
-  // 2) 處理關係（直接採用 l.relation 或 l.label 或 l.group）
+  // 2) 處理關係
   const links = rawLinks
     .filter((l) => {
       const s = typeof l.source === 'object' ? l.source.id : l.source;
@@ -91,10 +108,10 @@ export function normalizeGraph(raw) {
       return {
         ...l,
         label: relationName,
-        meta_relation: relationName, // 直接使用原始關係名稱，不再映射成 spatial/social...
+        meta_relation: relationName,
         color: l.color || linkColors[relationName] || '#CCCCCC',
         info: l.info || '',
-        year: typeof l.year === 'number' ? l.year : null,
+        year: parseYear(l.year),             // 💡 關係年份同樣進行容錯解析
       };
     });
 
