@@ -34,6 +34,7 @@ export default function InfoCard({
       else if (t === node.id) otherId = s;
       else continue;
 
+      // 支援 Map 或 一般物件 (Object)
       const otherNode = allNodesById instanceof Map
         ? allNodesById.get(otherId)
         : allNodesById?.[otherId];
@@ -56,15 +57,10 @@ export default function InfoCard({
   // 3. 解析 node.info 是否包含南澳記憶庫標題
   const { mainInfo, memoryInfo, hasMemoryTitle } = React.useMemo(() => {
     if (!node.info) return { mainInfo: '', memoryInfo: '', hasMemoryTitle: false };
-    
-    // 統一更換舊標題字樣
-    const cleanInfo = node.info
-      .replaceAll('📌【後台補充故事】', '📌【南澳記憶庫】')
-      .replaceAll('【後台補充故事】', '📌【南澳記憶庫】');
 
-    const titleKey = '📌【南澳記憶庫】';
-    if (cleanInfo.includes(titleKey)) {
-      const parts = cleanInfo.split(titleKey);
+    const titleKey = '【南澳記憶庫】';
+    if (node.info.includes(titleKey)) {
+      const parts = node.info.split(titleKey);
       return {
         mainInfo: parts[0].trim(),
         memoryInfo: parts[1].trim(),
@@ -72,7 +68,7 @@ export default function InfoCard({
       };
     }
 
-    return { mainInfo: cleanInfo.trim(), memoryInfo: '', hasMemoryTitle: false };
+    return { mainInfo: node.info.trim(), memoryInfo: '', hasMemoryTitle: false };
   }, [node.info]);
 
   return (
@@ -138,7 +134,7 @@ export default function InfoCard({
         </div>
       )}
 
-      {/* 無記憶庫標題時的圖片預設位置 */}
+      {/* 若內文無「南澳記憶庫」標題，圖片顯示於一般內文下方 */}
       {!hasMemoryTitle && node.Image && (
         <div style={{ marginTop: 12, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
           <img
@@ -150,14 +146,30 @@ export default function InfoCard({
         </div>
       )}
 
-      {/* 2. 南澳記憶庫區塊（標題 -> 圖片 -> 故事內文） */}
+      {/* 2. 南澳記憶庫區塊（超連結按鈕 -> 圖片 -> 故事內文） */}
       {hasMemoryTitle && (
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--ink-primary, #333)', marginBottom: 8 }}>
-            📌【南澳記憶庫】
-          </div>
+          {/* 超連結按鈕 */}
+          <a
+            href="https://cherylhsu222.github.io/memory-map-cowork/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontWeight: 700,
+              fontSize: 15,
+              color: '#2563EB',
+              textDecoration: 'none',
+              marginBottom: 8,
+              cursor: 'pointer'
+            }}
+          >
+            【南澳記憶庫】
+          </a>
 
-          {/* 圖片移至南澳記憶庫標題正下方 */}
+          {/* 圖片置於南澳記憶庫標題正下方 */}
           {node.Image && (
             <div style={{ marginBottom: 12, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
               <img
