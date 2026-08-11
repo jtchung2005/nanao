@@ -155,7 +155,7 @@ export default function InfoCard({
             rel="noopener noreferrer"
             style={{ fontSize: 13, color: '#2563EB', textDecoration: 'underline' }}
           >
-            -外部相關連結-
+            -相關連結-
           </a>
         </div>
       )}
