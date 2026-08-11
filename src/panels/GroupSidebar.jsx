@@ -47,7 +47,7 @@ export default function GroupSidebar({
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <div className="caption" style={{ fontWeight: 600 }}>分群</div>
+        <div className="caption" style={{ fontWeight: 600 }}>強調</div>
         <button className="btn icon-only" onClick={() => setOpen(false)} title="收起">‹</button>
       </div>
       {entries.map(([mg, subs], idx) => {
