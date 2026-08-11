@@ -34,7 +34,6 @@ export default function InfoCard({
       else if (t === node.id) otherId = s;
       else continue;
 
-      // 支援 Map 或 一般物件 (Object)
       const otherNode = allNodesById instanceof Map
         ? allNodesById.get(otherId)
         : allNodesById?.[otherId];
@@ -53,6 +52,28 @@ export default function InfoCard({
     }
     return groups;
   }, [node, allLinks, allNodesById]);
+
+  // 3. 解析 node.info 是否包含南澳記憶庫標題
+  const { mainInfo, memoryInfo, hasMemoryTitle } = React.useMemo(() => {
+    if (!node.info) return { mainInfo: '', memoryInfo: '', hasMemoryTitle: false };
+    
+    // 統一更換舊標題字樣
+    const cleanInfo = node.info
+      .replaceAll('📌【後台補充故事】', '📌【南澳記憶庫】')
+      .replaceAll('【後台補充故事】', '📌【南澳記憶庫】');
+
+    const titleKey = '📌【南澳記憶庫】';
+    if (cleanInfo.includes(titleKey)) {
+      const parts = cleanInfo.split(titleKey);
+      return {
+        mainInfo: parts[0].trim(),
+        memoryInfo: parts[1].trim(),
+        hasMemoryTitle: true
+      };
+    }
+
+    return { mainInfo: cleanInfo.trim(), memoryInfo: '', hasMemoryTitle: false };
+  }, [node.info]);
 
   return (
     <div
@@ -87,18 +108,6 @@ export default function InfoCard({
         </button>
       </div>
 
-      {/* 圖片預覽（若有來自 Supabase 的圖片） */}
-      {node.Image && (
-        <div style={{ marginTop: 12, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
-          <img
-            src={node.Image}
-            alt={node.id}
-            style={{ width: '100%', maxHeight: 200, objectFit: 'cover', display: 'block' }}
-            onError={(e) => { e.target.style.display = 'none'; }}
-          />
-        </div>
-      )}
-
       {/* 年份與地址 */}
       {(node.start_year || node.end_year || node.address) && (
         <div className="caption num" style={{ marginTop: 12, color: 'var(--ink-secondary, #666)', fontSize: 13 }}>
@@ -113,8 +122,8 @@ export default function InfoCard({
         </div>
       )}
 
-      {/* 內文描述 */}
-      {node.info && (
+      {/* 1. 主要內文描述 */}
+      {mainInfo && (
         <div
           className="body"
           style={{
@@ -125,7 +134,54 @@ export default function InfoCard({
             color: 'var(--ink-primary, #333)'
           }}
         >
-          {node.info}
+          {mainInfo}
+        </div>
+      )}
+
+      {/* 無記憶庫標題時的圖片預設位置 */}
+      {!hasMemoryTitle && node.Image && (
+        <div style={{ marginTop: 12, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
+          <img
+            src={node.Image}
+            alt={node.id}
+            style={{ width: '100%', maxHeight: 200, objectFit: 'cover', display: 'block' }}
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+        </div>
+      )}
+
+      {/* 2. 南澳記憶庫區塊（標題 -> 圖片 -> 故事內文） */}
+      {hasMemoryTitle && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--ink-primary, #333)', marginBottom: 8 }}>
+            📌【南澳記憶庫】
+          </div>
+
+          {/* 圖片移至南澳記憶庫標題正下方 */}
+          {node.Image && (
+            <div style={{ marginBottom: 12, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
+              <img
+                src={node.Image}
+                alt={node.id}
+                style={{ width: '100%', maxHeight: 200, objectFit: 'cover', display: 'block' }}
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            </div>
+          )}
+
+          {memoryInfo && (
+            <div
+              className="body"
+              style={{
+                whiteSpace: 'pre-line',
+                lineHeight: 1.5,
+                fontSize: 14,
+                color: 'var(--ink-primary, #333)'
+              }}
+            >
+              {memoryInfo}
+            </div>
+          )}
         </div>
       )}
 
@@ -189,7 +245,7 @@ export default function InfoCard({
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      justify: 'flex-start',
+                      justifyContent: 'flex-start',
                       textAlign: 'left',
                       padding: '6px 10px',
                       fontSize: 13,
