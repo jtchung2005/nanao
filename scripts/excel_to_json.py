@@ -154,7 +154,7 @@ try:
                     else:
                         n['info'] = new_content
                 
-                # 2. 補齊地理座標（加入安全轉型）
+                # 2. 補齊地理座標
                 try:
                     if pd.notna(row.get('latitude')) and str(row['latitude']).strip():
                         n['Lat'] = float(row['latitude'])
@@ -191,22 +191,17 @@ try:
     # 5. 輸出至網頁檔名與位置：data/graph.json
     output_data = {
         'nodes': nodes,
-        'links': links
+        'links': links,
+        'node_colors': node_colors,
+        'link_colors': link_colors
     }
     
     os.makedirs('data', exist_ok=True)
     with open('data/graph.json', 'w', encoding='utf-8') as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
         
-    print("🎉 資料轉換與整合成功完成！檔案已更新至 data/graph.json")
+    print("🎉 資料轉換與整合成功完成！檔案已更新至 data/graph.json（包含完整色彩設定）")
 
 except Exception as e:
-    print(f"❌ 執行失敗: {e}")    os.makedirs('data', exist_ok=True)
-    with open('data/graph.json', 'w', encoding='utf-8') as f:
-        json.dump({'nodes': nodes, 'links': links, 'node_colors': node_colors, 'link_colors': link_colors}, f, ensure_ascii=False, indent=2)
-
-    print("成功！已從 Google Sheets 更新並產生 data/graph.json（包含完整色彩設定）")
-
-except Exception as e:
-    print(f"抓取或轉換失敗: {e}")
+    print(f"❌ 抓取或轉換失敗: {e}")
     raise e
