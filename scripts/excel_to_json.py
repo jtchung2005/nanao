@@ -150,7 +150,7 @@ try:
                 if pd.notna(row.get('content')) and str(row['content']).strip():
                     new_content = str(row['content']).strip()
                     if n.get('info'):
-                        n['info'] = f"{n['info']}\n\n📌【後台補充故事】\n{new_content}"
+                        n['info'] = f"{n['info']}\n\n【南澳記憶庫】\n{new_content}"
                     else:
                         n['info'] = new_content
                 
