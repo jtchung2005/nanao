@@ -207,7 +207,7 @@ export default function InfoCard({
           )}
         {/* 貢獻來源 */}
         {node.credits && (
-        <div className="caption" style={{ marginTop: 12, fontSize: 12, color: '#888' }}>
+        <div className="caption" style={{ marginTop: 10, fontSize: 10, color: '#888' }}>
           來源/提供者：{node.credits}
         </div>
         )}
