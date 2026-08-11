@@ -146,10 +146,18 @@ export default function InfoCard({
         </div>
       )}
 
-      {/* 2. 南澳記憶庫區塊（超連結按鈕 -> 圖片 -> 故事內文） */}
+      {/* 2. 南澳記憶庫整體區塊（包裹在淺咖啡色底色上） */}
       {hasMemoryTitle && (
-        <div style={{ marginTop: 16 }}>
-          {/* 超連結按鈕 */}
+        <div
+          style={{
+            marginTop: 16,
+            padding: 14,
+            backgroundColor: '#F5EBE6',
+            borderRadius: 10,
+            border: '1px solid #E6D7CD'
+          }}
+        >
+          {/* 南澳記憶庫按鈕：咖啡色底、圓角、白字 */}
           <a
             href="https://cherylhsu222.github.io/memory-map-cowork/"
             target="_blank"
@@ -158,20 +166,23 @@ export default function InfoCard({
               display: 'inline-flex',
               alignItems: 'center',
               gap: 4,
-              fontWeight: 700,
-              fontSize: 15,
-              color: '#2563EB',
+              fontWeight: 600,
+              fontSize: 14,
+              color: '#FFFFFF',
+              backgroundColor: '#8B5E3C',
+              padding: '6px 12px',
+              borderRadius: 6,
               textDecoration: 'none',
-              marginBottom: 8,
+              marginBottom: 10,
               cursor: 'pointer'
             }}
           >
-            【南澳記憶庫】
+            南澳記憶庫
           </a>
 
           {/* 圖片置於南澳記憶庫標題正下方 */}
           {node.Image && (
-            <div style={{ marginBottom: 12, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
+            <div style={{ marginBottom: 10, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
               <img
                 src={node.Image}
                 alt={node.id}
@@ -181,6 +192,7 @@ export default function InfoCard({
             </div>
           )}
 
+          {/* 南澳記憶庫內容 */}
           {memoryInfo && (
             <div
               className="body"
@@ -214,16 +226,28 @@ export default function InfoCard({
         </div>
       )}
 
-      {/* 相關連結按鈕 */}
+      {/* 相關連結按鈕：放在外部，深綠色底、圓角、白字 */}
       {node.link && (
         <div style={{ marginTop: 12 }}>
           <a
             href={node.link}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ fontSize: 13, color: '#2563EB', textDecoration: 'underline' }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#FFFFFF',
+              backgroundColor: '#2D5A3F',
+              padding: '6px 12px',
+              borderRadius: 6,
+              textDecoration: 'none',
+              cursor: 'pointer'
+            }}
           >
-            -相關連結-
+            相關連結 ↗
           </a>
         </div>
       )}
