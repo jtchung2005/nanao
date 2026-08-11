@@ -191,21 +191,27 @@ export default function InfoCard({
               />
             </div>
           )}
-
-          {/* 南澳記憶庫內容 */}
+        {/* 南澳記憶庫內容 */}
           {memoryInfo && (
             <div
               className="body"
               style={{
                 whiteSpace: 'pre-line',
                 lineHeight: 1.5,
-                fontSize: 14,
+                fontSize: 12,
                 color: 'var(--ink-primary, #333)'
               }}
             >
               {memoryInfo}
             </div>
           )}
+        {/* 貢獻來源 */}
+        {node.credits && (
+        <div className="caption" style={{ marginTop: 12, fontSize: 12, color: '#888' }}>
+          來源/提供者：{node.credits}
+        </div>
+        )}
+          
         </div>
       )}
 
@@ -219,12 +225,6 @@ export default function InfoCard({
         </div>
       )}
 
-      {/* 貢獻來源 */}
-      {node.credits && (
-        <div className="caption" style={{ marginTop: 12, fontSize: 12, color: '#888' }}>
-          來源/提供者：{node.credits}
-        </div>
-      )}
 
       {/* 相關連結按鈕：放在外部，深綠色底、圓角、白字 */}
       {node.link && (
@@ -237,7 +237,7 @@ export default function InfoCard({
               display: 'inline-flex',
               alignItems: 'center',
               gap: 4,
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: 600,
               color: '#FFFFFF',
               backgroundColor: '#2D5A3F',
