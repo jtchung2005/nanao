@@ -41,6 +41,7 @@ export default function App() {
   const [groupHighlight, setGroupHighlight] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= BP_MOBILE);
   const [ctrlOpen, setCtrlOpen] = useState(window.innerWidth >= BP_MOBILE);
+  const [bottomOpen, setBottomOpen] = useState(true);
   const [bottomBarH, setBottomBarH] = useState(150);
   const [ctrlH, setCtrlH] = useState(40);
 
@@ -84,6 +85,7 @@ export default function App() {
     ro.observe(bottomRef.current);
     return () => ro.disconnect();
   }, []);
+
   useEffect(() => {
     if (!ctrlRef.current) { setCtrlH(40); return; }
     const ro = new ResizeObserver((es) => setCtrlH(es[0].contentRect.height));
@@ -91,7 +93,7 @@ export default function App() {
     return () => ro.disconnect();
   }, [ctrlOpen]);
 
-  // 計算 lat/lon bounds（自動修正 swap）— 必須在用到它的 effect 之前宣告
+  // 計算 lat/lon bounds（自動修正 swap）
   const spatialInfo = useMemo(() => {
     if (!data) return { bounds: null, count: 0 };
     let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
@@ -153,7 +155,6 @@ export default function App() {
         if (n && e) setHover({ node: n, x: e.clientX, y: e.clientY });
         else setHover({ node: null, x: 0, y: 0 });
       });
-      // 在第一次 setData 之前先告訴 graph 目前 spatial 模式，避免初始化雙重重啟
       graphRef.current._spatialMode = spatialMode && spatialInfo.count > 0;
       graphRef.current._spatialBounds = spatialInfo.bounds;
     }
@@ -246,6 +247,7 @@ export default function App() {
     if (ns.has(id)) ns.delete(id); else ns.add(id);
     return { ...s, [key]: ns };
   });
+
   const reset = () => {
     if (!data) return;
     setUrlState({
@@ -260,22 +262,24 @@ export default function App() {
     setGroupHighlight(null);
     if (graphRef.current) graphRef.current.setHighlight(null, null);
   };
+
   const resetGraphControl = () => {
     setFontSize(DEFAULTS.fontSize);
     setNodeScale(DEFAULTS.nodeScale);
     setCharge(DEFAULTS.charge);
   };
+
   const focusNodeGroup = (mg) => setUrlState((s) => ({ ...s, mg: new Set([mg]) }));
+
   const handleNodeClick = (node) => {
     setUrlState((s) => ({ ...s, node: node.id }));
     graphRef.current?.zoomToNode(node.id, 1.4);
   };
+
   const onClose = () => setUrlState((s) => ({ ...s, node: '' }));
 
   // ── Layout ──────────────────────────────────────
-  // 底部時間軸永遠左右撐滿
-  // 側邊面板停在 bottom bar 上方
-  const sidePanelBottom = bottomBarH + 24; // gap above bottom bar
+  const sidePanelBottom = bottomBarH + 24;
   const minimapBottom = bottomBarH + 16;
   const ctrlTop = 80;
   const infoCardTop = ctrlTop + (ctrlOpen ? ctrlH : 40) + 8;
@@ -401,62 +405,90 @@ export default function App() {
           className="paper-card"
           style={{
             position: 'absolute', bottom: 12, left: 12, right: 12,
-            padding: '10px 16px 6px',
+            padding: bottomOpen ? '10px 16px 6px' : '6px 16px',
             display: 'flex', flexDirection: 'column', gap: 8,
             zIndex: 25,
+            transition: 'padding 0.2s ease',
           }}
         >
-          {/* Row 1: Timeline */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <TimelineSlider
-              min={data.stats.year_range[0]}
-              max={data.stats.year_range[1]}
-              value={urlState.years}
-              nodes={data.nodes}
-              onChange={(yrs) => setUrlState((s) => ({ ...s, years: yrs }))}
-              onlyDated={urlState.od}
-              onToggleOnlyDated={() => setUrlState((s) => ({ ...s, od: !s.od }))}
-            />
-          </div>
+          {!bottomOpen ? (
+            /* 收合狀態 */
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span className="tiny" style={{ color: 'var(--ink-secondary)', fontWeight: 600 }}>
+                ⏱ 時間軸與篩選控制
+              </span>
+              <button
+                className="btn"
+                onClick={() => setBottomOpen(true)}
+                style={{ padding: '2px 10px', fontSize: 11 }}
+              >
+                ▲ 展開面板
+              </button>
+            </div>
+          ) : (
+            /* 展開狀態 */
+            <>
+              {/* Row 1: Timeline + 收合按鈕 */}
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+                <TimelineSlider
+                  min={data.stats.year_range[0]}
+                  max={data.stats.year_range[1]}
+                  value={urlState.years}
+                  nodes={data.nodes}
+                  onChange={(yrs) => setUrlState((s) => ({ ...s, years: yrs }))}
+                  onlyDated={urlState.od}
+                  onToggleOnlyDated={() => setUrlState((s) => ({ ...s, od: !s.od }))}
+                />
+                <button
+                  className="btn"
+                  onClick={() => setBottomOpen(false)}
+                  title="收合面板"
+                  style={{ padding: '2px 8px', fontSize: 11, whiteSpace: 'nowrap', marginBottom: 4 }}
+                >
+                  ▼ 收合
+                </button>
+              </div>
 
-          <hr className="divider" style={{ margin: '2px 0' }} />
+              <hr className="divider" style={{ margin: '2px 0' }} />
 
-          {/* Row 2: Legend (groups) | Relations */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span className="tiny" style={{ color: 'var(--ink-faint)' }}>節點篩選</span>
-            <Legend
-              metaGroups={data.meta_groups.filter((g) => g.count > 0)}
-              activeGroups={urlState.mg}
-              onToggleGroup={(id) => toggleSetIn('mg', id)}
-              onlyBreakthrough={urlState.bt}
-              onToggleBreakthrough={() => setUrlState((s) => ({ ...s, bt: !s.bt }))}
-              breakthroughCount={data.stats.breakthroughs}
-            />
-            {!isMobile && <div style={{ height: 22, width: 1, background: 'var(--ink-line)' }} />}
-            <span className="tiny" style={{ color: 'var(--ink-faint)' }}>關係篩選</span>
-            <RelationFilter
-              metaRelations={data.meta_relations.filter((r) => r.count > 0)}
-              active={urlState.mr}
-              onToggle={(id) => toggleSetIn('mr', id)}
-            />
-          </div>
+              {/* Row 2: Legend (groups) | Relations */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <span className="tiny" style={{ color: 'var(--ink-faint)' }}>節點篩選</span>
+                <Legend
+                  metaGroups={data.meta_groups.filter((g) => g.count > 0)}
+                  activeGroups={urlState.mg}
+                  onToggleGroup={(id) => toggleSetIn('mg', id)}
+                  onlyBreakthrough={urlState.bt}
+                  onToggleBreakthrough={() => setUrlState((s) => ({ ...s, bt: !s.bt }))}
+                  breakthroughCount={data.stats.breakthroughs}
+                />
+                {!isMobile && <div style={{ height: 22, width: 1, background: 'var(--ink-line)' }} />}
+                <span className="tiny" style={{ color: 'var(--ink-faint)' }}>關係篩選</span>
+                <RelationFilter
+                  metaRelations={data.meta_relations.filter((r) => r.count > 0)}
+                  active={urlState.mr}
+                  onToggle={(id) => toggleSetIn('mr', id)}
+                />
+              </div>
 
-          {/* Row 3: 版權（置中）*/}
-          <div
-            className="tiny"
-            style={{
-              borderTop: '1px solid var(--ink-line)',
-              paddingTop: 4, marginTop: 2,
-              textAlign: 'center',
-              color: 'var(--ink-faint)', fontSize: 10,
-              lineHeight: 1.5,
-            }}
-          >
-            © 國立陽明交通大學跨領域設計科學研究中心 (TDIS) ・ 曾聖凱 助理教授・
-            <a href="mailto:sky@arch.nycu.edu.tw" style={{ color: 'inherit', textDecoration: 'none' }}>
-              sky@arch.nycu.edu.tw
-            </a>
-          </div>
+              {/* Row 3: 版權 */}
+              <div
+                className="tiny"
+                style={{
+                  borderTop: '1px solid var(--ink-line)',
+                  paddingTop: 4, marginTop: 2,
+                  textAlign: 'center',
+                  color: 'var(--ink-faint)', fontSize: 10,
+                  lineHeight: 1.5,
+                }}
+              >
+                © 國立陽明交通大學跨領域設計科學研究中心 (TDIS) ・ 曾聖凱 助理教授・
+                <a href="mailto:sky@arch.nycu.edu.tw" style={{ color: 'inherit', textDecoration: 'none' }}>
+                  sky@arch.nycu.edu.tw
+                </a>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
