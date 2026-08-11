@@ -423,7 +423,7 @@ export default function App() {
 
           {/* Row 2: Legend (groups) | Relations */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span className="tiny" style={{ color: 'var(--ink-faint)' }}>分類</span>
+            <span className="tiny" style={{ color: 'var(--ink-faint)' }}>節點篩選</span>
             <Legend
               metaGroups={data.meta_groups.filter((g) => g.count > 0)}
               activeGroups={urlState.mg}
@@ -433,7 +433,7 @@ export default function App() {
               breakthroughCount={data.stats.breakthroughs}
             />
             {!isMobile && <div style={{ height: 22, width: 1, background: 'var(--ink-line)' }} />}
-            <span className="tiny" style={{ color: 'var(--ink-faint)' }}>關係</span>
+            <span className="tiny" style={{ color: 'var(--ink-faint)' }}>關係篩選</span>
             <RelationFilter
               metaRelations={data.meta_relations.filter((r) => r.count > 0)}
               active={urlState.mr}
