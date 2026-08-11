@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 import os
+import re
 
 # 1. Google Sheet ID 與各分頁 gid 填寫
 SPREADSHEET_ID = "1X7gYxlJaUcbzPNgeLO-hjsz1tVGc7TZDAB5817B8BaI"
@@ -9,7 +10,8 @@ SHEET_GIDS = {
     'nodes_ALL': '422651298',
     'link_ALL': '1851835395',
     'nodes_color': '443146848',
-    'links_color': '623413879'
+    'links_color': '623413879',
+    'supabase_data': '68415004'
 }
 
 DEFAULT_NODE_COLORS = {
@@ -62,7 +64,7 @@ try:
     df_n_color = get_sheet_df_by_gid('nodes_color')
     df_l_color = get_sheet_df_by_gid('links_color')
 
-    # 1. 解析節點分類與顏色對應（先載入預設，再用 Sheet 的設定覆蓋）
+    # 1. 解析節點分類與顏色對應
     node_colors = DEFAULT_NODE_COLORS.copy()
     n_group_col = df_n_color.columns[0]
     n_color_col = df_n_color.columns[1]
@@ -127,8 +129,79 @@ try:
             'color': link_colors.get(label, '#CCCCCC')
         })
 
-    # 5. 輸出至網頁正確讀取的檔名與位置：data/graph.json
+    # 3.5 整合 Supabase 後台資料 (Append 追加模式)
+    try:
+        df_supabase = get_sheet_df_by_gid('supabase_data')
+        node_dict = {n['id']: n for n in nodes}
+        
+        for _, row in df_supabase.iterrows():
+            target_raw = str(row['target_node_id']).strip() if 'target_node_id' in row and pd.notna(row['target_node_id']) else ''
+            if not target_raw or target_raw.upper() in ['NEW', 'NAN', 'NONE']:
+                continue
+            
+            target_ids = [t.strip() for t in target_raw.replace('，', ',').split(',')]
+            
+            for tid in target_ids:
+                if tid not in node_dict:
+                    continue
+                n = node_dict[tid]
+                
+                # 1. 追加文字敘述
+                if pd.notna(row.get('content')) and str(row['content']).strip():
+                    new_content = str(row['content']).strip()
+                    if n.get('info'):
+                        n['info'] = f"{n['info']}\n\n📌【後台補充故事】\n{new_content}"
+                    else:
+                        n['info'] = new_content
+                
+                # 2. 補齊地理座標（加入安全轉型）
+                try:
+                    if pd.notna(row.get('latitude')) and str(row['latitude']).strip():
+                        n['Lat'] = float(row['latitude'])
+                    if pd.notna(row.get('longitude')) and str(row['longitude']).strip():
+                        n['Lon'] = float(row['longitude'])
+                except ValueError:
+                    pass
+                
+                # 3. 補充圖片 URL
+                if pd.notna(row.get('image_url')) and str(row['image_url']).strip():
+                    n['Image'] = str(row['image_url']).strip()
+                
+                # 4. 補充詳細地址
+                if pd.notna(row.get('place_name')) and str(row['place_name']).strip():
+                    n['address'] = str(row['place_name']).strip()
+                
+                # 5. 補齊年份
+                if pd.notna(row.get('period_text')) and str(row['period_text']).strip():
+                    years = re.findall(r'\d{4}', str(row['period_text']))
+                    if years and not n.get('start_year'):
+                        n['start_year'] = years[0]
+                
+                # 6. 補充投稿來源與分享者
+                sharer = str(row['sharer_name']).strip() if pd.notna(row.get('sharer_name')) else ''
+                source = str(row['source_label']).strip() if pd.notna(row.get('source_label')) else ''
+                credits_parts = [p for p in [source, sharer] if p and p.lower() not in ['nan', 'none']]
+                if credits_parts:
+                    n['credits'] = ' / '.join(credits_parts)
+
+        print("✅ 已成功以 Append 模式整合 Supabase 資料！")
+    except Exception as e:
+        print(f"⚠️ Supabase 資料整合失敗: {e}")
+
+    # 5. 輸出至網頁檔名與位置：data/graph.json
+    output_data = {
+        'nodes': nodes,
+        'links': links
+    }
+    
     os.makedirs('data', exist_ok=True)
+    with open('data/graph.json', 'w', encoding='utf-8') as f:
+        json.dump(output_data, f, ensure_ascii=False, indent=2)
+        
+    print("🎉 資料轉換與整合成功完成！檔案已更新至 data/graph.json")
+
+except Exception as e:
+    print(f"❌ 執行失敗: {e}")    os.makedirs('data', exist_ok=True)
     with open('data/graph.json', 'w', encoding='utf-8') as f:
         json.dump({'nodes': nodes, 'links': links, 'node_colors': node_colors, 'link_colors': link_colors}, f, ensure_ascii=False, indent=2)
 
