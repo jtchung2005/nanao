@@ -104,11 +104,11 @@ export default function InfoCard({
         <div className="caption num" style={{ marginTop: 12, color: 'var(--ink-secondary, #666)', fontSize: 13 }}>
           {(node.start_year || node.end_year) && (
             <div>
-              📅 {node.start_year ?? '?'}{node.end_year && node.end_year !== node.start_year ? ` – ${node.end_year}` : ''}
+              年份： {node.start_year ?? '?'}{node.end_year && node.end_year !== node.start_year ? ` – ${node.end_year}` : ''}
             </div>
           )}
           {node.address && (
-            <div style={{ marginTop: 2 }}>📍 {node.address}</div>
+            <div style={{ marginTop: 2 }}>地點： {node.address}</div>
           )}
         </div>
       )}
@@ -142,7 +142,7 @@ export default function InfoCard({
       {/* 貢獻來源 */}
       {node.credits && (
         <div className="caption" style={{ marginTop: 12, fontSize: 12, color: '#888' }}>
-          🏷️ 來源/提供者：{node.credits}
+          來源/提供者：{node.credits}
         </div>
       )}
 
@@ -155,7 +155,7 @@ export default function InfoCard({
             rel="noopener noreferrer"
             style={{ fontSize: 13, color: '#2563EB', textDecoration: 'underline' }}
           >
-            🔗 外部相關連結
+            外部相關連結
           </a>
         </div>
       )}
