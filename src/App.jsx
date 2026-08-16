@@ -303,10 +303,13 @@ export default function App() {
       degree[s] = (degree[s] || 0) + 1;
       degree[t] = (degree[t] || 0) + 1;
     }
-    let best = null, bestDeg = -1;
+    // 連結數接近 5 個最理想——夠展示網絡連結功能，又不會讓示範清單長到爆版
+    let best = null, bestScore = -Infinity;
     for (const n of data.nodes) {
       const d = degree[n.id] || 0;
-      if (n.info && d > bestDeg) { bestDeg = d; best = n.id; }
+      if (!n.info || d < 2) continue;
+      const score = -Math.abs(d - 5);
+      if (score > bestScore) { bestScore = score; best = n.id; }
     }
     return best;
   }, [data]);
@@ -330,8 +333,12 @@ export default function App() {
     { target: 'tour-search', text: '輸入關鍵字，可以快速找到任何人物、地點或事件節點。' },
     {
       target: 'tour-sidebar',
-      text: `左側是分類清單，點擊分類名稱（不是右邊的 ⊙）可以讓圖譜特別亮起那個類別的節點，其他節點會變暗襯托出來——像現在這樣，亮起來的就是「${demoGroup?.id ?? ''}」。再點一次可以取消。`,
+      text: '左側是分類清單，點擊分類名稱（不是右邊的 ⊙）可以讓圖譜特別亮起那個類別的節點。',
       onEnter: () => { if (demoGroupIds && demoGroupKey) handleHighlightIds(demoGroupIds, demoGroupKey); },
+    },
+    {
+      target: demoGroup ? `tour-cat-${demoGroup.id}` : 'tour-sidebar',
+      text: `其他節點會變暗襯托出來——像現在這樣，亮起來的就是「${demoGroup?.id ?? ''}」。再點一次可以取消。`,
       // 直接清空，不依賴當下的 groupHighlight state —— effect 的 cleanup 是用進入當下
       // 那個 step 物件的 closure 執行，此時 state 可能還沒更新，用 toggle 判斷會抓到舊值。
       onLeave: () => {
@@ -346,8 +353,9 @@ export default function App() {
       onEnter: () => { if (demoNodeId) setUrlState((s) => ({ ...s, node: demoNodeId })); },
     },
     {
-      target: 'tour-infocard',
+      target: 'tour-infocard-related',
       text: '往下捲動還會看到「網絡連結」——這個節點跟哪些人、事、地有關係，點擊任一個連結就能跳過去，一路順著關係鏈往下探索整個南澳知識網絡。',
+      onEnter: () => { document.getElementById('tour-infocard-related')?.scrollIntoView({ block: 'nearest' }); },
       onLeave: () => { setUrlState((s) => (s.node === demoNodeId ? { ...s, node: '' } : s)); },
     },
     { target: 'tour-timeline', text: '拖曳時間軸兩端的滑桿，可以只顯示特定年代範圍內的節點。' },

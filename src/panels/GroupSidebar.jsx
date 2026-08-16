@@ -70,6 +70,7 @@ export default function GroupSidebar({
             {idx > 0 && <hr className="divider" style={{ margin: '6px 0' }} />}
             <div style={{ marginBottom: 4 }}>
               <div
+                id={`tour-cat-${mg}`}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   padding: '4px 6px', borderRadius: 4,

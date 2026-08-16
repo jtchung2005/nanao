@@ -254,7 +254,7 @@ export default function InfoCard({
       )}
 
       {/* 相關節點分組 */}
-      <div style={{ marginTop: 20 }}>
+      <div id="tour-infocard-related" style={{ marginTop: 20 }}>
         {Object.entries(related).map(([relGroup, items]) => {
           if (!items.length) return null;
           const groupColor = items[0]?.relColor || '#6B7280';
