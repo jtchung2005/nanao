@@ -68,7 +68,7 @@ export default function Search({ nodes, links, onSelectNode }) {
   }, []);
 
   return (
-    <div style={{ position: 'relative', flex: '0 1 320px', maxWidth: 320 }}>
+    <div id="tour-search" style={{ position: 'relative', flex: '0 1 320px', maxWidth: 320 }}>
       <input
         ref={inputRef}
         type="search"

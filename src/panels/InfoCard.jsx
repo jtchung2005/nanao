@@ -73,6 +73,7 @@ export default function InfoCard({
 
   return (
     <div
+      id="tour-infocard"
       className="paper-card slide-in-right"
       style={{
         position: 'absolute',

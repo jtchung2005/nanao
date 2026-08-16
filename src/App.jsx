@@ -15,6 +15,7 @@ import GroupSidebar from './panels/GroupSidebar.jsx';
 import TimelineSlider from './panels/TimelineSlider.jsx';
 import Minimap from './panels/Minimap.jsx';
 import GraphControl from './panels/GraphControl.jsx';
+import OnboardingTour from './panels/OnboardingTour.jsx';
 
 const URL_PARAMS = {
   node:   { default: '', ...codecs.string },
@@ -278,6 +279,51 @@ export default function App() {
 
   const onClose = () => setUrlState((s) => ({ ...s, node: '' }));
 
+  // ── 首次進入導覽 ──────────────────────────────────
+  const [tourActive, setTourActive] = useState(false);
+  useEffect(() => {
+    if (!data || loading) return undefined;
+    if (localStorage.getItem('nanao_tour_seen')) return undefined;
+    const t = setTimeout(() => setTourActive(true), 900);
+    return () => clearTimeout(t);
+  }, [data, loading]);
+
+  const finishTour = () => {
+    setTourActive(false);
+    localStorage.setItem('nanao_tour_seen', '1');
+  };
+
+  // 挑一個連結數最多、且有介紹文字的節點，導覽時示範資訊卡長怎樣
+  const demoNodeId = useMemo(() => {
+    if (!data) return null;
+    const degree = {};
+    for (const l of data.links) {
+      const s = typeof l.source === 'object' ? l.source.id : l.source;
+      const t = typeof l.target === 'object' ? l.target.id : l.target;
+      degree[s] = (degree[s] || 0) + 1;
+      degree[t] = (degree[t] || 0) + 1;
+    }
+    let best = null, bestDeg = -1;
+    for (const n of data.nodes) {
+      const d = degree[n.id] || 0;
+      if (n.info && d > bestDeg) { bestDeg = d; best = n.id; }
+    }
+    return best;
+  }, [data]);
+
+  const tourSteps = useMemo(() => ([
+    { target: 'tour-search', text: '輸入關鍵字，可以快速找到任何人物、地點或事件節點。' },
+    { target: 'tour-sidebar', text: '左側是分類清單，點擊任一類別可以強調顯示那個類型的節點。' },
+    { target: 'tour-canvas', text: '在圖上點擊任一個圓點節點，可以看到它的詳細介紹。' },
+    {
+      target: 'tour-infocard',
+      text: '節點的完整介紹會顯示在這裡；往下捲動還能看到跟其他節點的關係連結，點擊可以直接跳過去看。',
+      onEnter: () => { if (demoNodeId) setUrlState((s) => ({ ...s, node: demoNodeId })); },
+      onLeave: () => { setUrlState((s) => (s.node === demoNodeId ? { ...s, node: '' } : s)); },
+    },
+    { target: 'tour-timeline', text: '拖曳時間軸兩端的滑桿，可以只顯示特定年代範圍內的節點。' },
+  ]), [demoNodeId, setUrlState]);
+
   // ── Layout ──────────────────────────────────────
   const sidePanelBottom = bottomBarH + 24;
   const minimapBottom = bottomBarH + 16;
@@ -287,7 +333,7 @@ export default function App() {
 
   return (
     <div className="paper-bg fixed inset-0">
-      <div ref={containerRef} className="absolute inset-0" style={{ zIndex: 1 }} />
+      <div id="tour-canvas" ref={containerRef} className="absolute inset-0" style={{ zIndex: 1 }} />
 
       <LabelLayer
         graph={graphRef.current}
@@ -339,6 +385,7 @@ export default function App() {
             )}
             <button className="btn" onClick={() => graphRef.current?.zoomToFit()} title="全覽">⛶</button>
             <button className="btn" onClick={reset} title="重置篩選">↺</button>
+            <button className="btn" onClick={() => setTourActive(true)} title="使用說明">？</button>
           </div>
         </div>
       )}
@@ -429,7 +476,7 @@ export default function App() {
             /* 展開狀態 */
             <>
               {/* Row 1: Timeline + 收合按鈕 */}
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+              <div id="tour-timeline" style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
                 <TimelineSlider
                   min={data.stats.year_range[0]}
                   max={data.stats.year_range[1]}
@@ -491,6 +538,8 @@ export default function App() {
           )}
         </div>
       )}
+
+      <OnboardingTour active={tourActive} steps={tourSteps} onFinish={finishTour} />
     </div>
   );
 }

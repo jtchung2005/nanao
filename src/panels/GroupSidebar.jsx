@@ -39,6 +39,7 @@ export default function GroupSidebar({
 
   return (
     <div
+      id="tour-sidebar"
       className="paper-card"
       style={{
         position: 'absolute', top: 80, left: 12, width: 240,
