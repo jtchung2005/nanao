@@ -311,18 +311,47 @@ export default function App() {
     return best;
   }, [data]);
 
+  // 挑節點數最多的分類，導覽時示範「點類別會高亮」的效果
+  const demoGroup = useMemo(() => {
+    if (!data) return null;
+    let best = null;
+    for (const g of data.meta_groups) {
+      if (!best || g.count > best.count) best = g;
+    }
+    return best;
+  }, [data]);
+  const demoGroupKey = demoGroup ? `mg:${demoGroup.id}` : null;
+  const demoGroupIds = useMemo(() => {
+    if (!demoGroup || !data) return null;
+    return new Set(data.nodes.filter((n) => n.meta_group === demoGroup.id).map((n) => n.id));
+  }, [demoGroup, data]);
+
   const tourSteps = useMemo(() => ([
     { target: 'tour-search', text: '輸入關鍵字，可以快速找到任何人物、地點或事件節點。' },
-    { target: 'tour-sidebar', text: '左側是分類清單，點擊任一類別可以強調顯示那個類型的節點。' },
+    {
+      target: 'tour-sidebar',
+      text: `左側是分類清單，點擊分類名稱（不是右邊的 ⊙）可以讓圖譜特別亮起那個類別的節點，其他節點會變暗襯托出來——像現在這樣，亮起來的就是「${demoGroup?.id ?? ''}」。再點一次可以取消。`,
+      onEnter: () => { if (demoGroupIds && demoGroupKey) handleHighlightIds(demoGroupIds, demoGroupKey); },
+      // 直接清空，不依賴當下的 groupHighlight state —— effect 的 cleanup 是用進入當下
+      // 那個 step 物件的 closure 執行，此時 state 可能還沒更新，用 toggle 判斷會抓到舊值。
+      onLeave: () => {
+        setGroupHighlight(null);
+        graphRef.current?.setHighlight(null, null);
+      },
+    },
     { target: 'tour-canvas', text: '在圖上點擊任一個圓點節點，可以看到它的詳細介紹。' },
     {
       target: 'tour-infocard',
-      text: '節點的完整介紹會顯示在這裡；往下捲動還能看到跟其他節點的關係連結，點擊可以直接跳過去看。',
+      text: '節點的完整介紹會顯示在這裡，包含年份、地點與說明文字。',
       onEnter: () => { if (demoNodeId) setUrlState((s) => ({ ...s, node: demoNodeId })); },
+    },
+    {
+      target: 'tour-infocard',
+      text: '往下捲動還會看到「網絡連結」——這個節點跟哪些人、事、地有關係，點擊任一個連結就能跳過去，一路順著關係鏈往下探索整個南澳知識網絡。',
       onLeave: () => { setUrlState((s) => (s.node === demoNodeId ? { ...s, node: '' } : s)); },
     },
     { target: 'tour-timeline', text: '拖曳時間軸兩端的滑桿，可以只顯示特定年代範圍內的節點。' },
-  ]), [demoNodeId, setUrlState]);
+  ]), [demoNodeId, demoGroup, demoGroupIds, demoGroupKey, setUrlState]);
 
   // ── Layout ──────────────────────────────────────
   const sidePanelBottom = bottomBarH + 24;
