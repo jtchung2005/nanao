@@ -104,7 +104,7 @@ export function normalizeGraph(raw) {
       return idSet.has(s) && idSet.has(t);
     })
     .map((l) => {
-      const relationName = (l.relation || l.label || l.group || '其他').trim();
+      const relationName = (l.relation || l.group || l.label || '其他').trim();
       return {
         ...l,
         label: relationName,
