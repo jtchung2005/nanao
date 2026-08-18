@@ -149,10 +149,16 @@ try:
                 # 1. 追加文字敘述
                 if pd.notna(row.get('content')) and str(row['content']).strip():
                     new_content = str(row['content']).strip()
-                    if n.get('info'):
-                        n['info'] = f"{n['info']}\n\n【南澳記憶庫】\n{new_content}"
-                    else:
-                        n['info'] = new_content
+                    formatted_new = f"【南澳記憶庫】\n{new_content}"
+                    existing_info = n.get('info', '').strip()
+    
+                # 只有當現有內容與新內容（純文字或帶標題）不一致時才追加
+        if existing_info:
+        if existing_info != new_content and existing_info != formatted_new:
+            n['info'] = f"{existing_info}\n\n{formatted_new}"
+        else:
+        n['info'] = new_content
+            
                 
                 # 2. 補齊地理座標
                 try:
@@ -172,10 +178,10 @@ try:
                     n['address'] = str(row['place_name']).strip()
                 
                 # 5. 補齊年份
-                if pd.notna(row.get('period_text')) and str(row['period_text']).strip():
+                '''if pd.notna(row.get('period_text')) and str(row['period_text']).strip():
                     years = re.findall(r'\d{4}', str(row['period_text']))
                     if years and not n.get('start_year'):
-                        n['start_year'] = years[0]
+                        n['start_year'] = years[0]'''
                 
                 # 6. 補充投稿來源與分享者
                 sharer = str(row['sharer_name']).strip() if pd.notna(row.get('sharer_name')) else ''
