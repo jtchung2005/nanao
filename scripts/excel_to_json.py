@@ -152,13 +152,12 @@ try:
                     formatted_new = f"【南澳記憶庫】\n{new_content}"
                     existing_info = n.get('info', '').strip()
     
-                # 只有當現有內容與新內容（純文字或帶標題）不一致時才追加
-        if existing_info:
-        if existing_info != new_content and existing_info != formatted_new:
-            n['info'] = f"{existing_info}\n\n{formatted_new}"
-        else:
-        n['info'] = new_content
-            
+                    # 只有當現有內容與新內容（純文字或帶標題）不一致時才追加
+                    if existing_info:
+                        if existing_info != new_content and existing_info != formatted_new:
+                            n['info'] = f"{existing_info}\n\n{formatted_new}"
+                    else:
+                        n['info'] = formatted_new
                 
                 # 2. 補齊地理座標
                 try:
