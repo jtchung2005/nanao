@@ -85,6 +85,18 @@ export default function App() {
   };
   const handleShowAll = () => setActiveThemes(null);
 
+  // 分享連結（?node=xxx）進站時，跳過主題蓋板直接顯示完整圖譜，
+  // 不然分享出去的連結會被蓋板擋住、對方還得先選主題才看得到指定節點。
+  // 只在蓋板還開著的當下判斷一次——蓋板一旦被使用者手動關閉就不會再重新打開，
+  // 之後 urlState.node 再變動（例如站內點擊節點）不會誤觸這裡。
+  useEffect(() => {
+    if (!data || !themeGateOpen) return;
+    if (urlState.node) {
+      setActiveThemes(null);
+      setThemeGateOpen(false);
+    }
+  }, [data, themeGateOpen, urlState.node]);
+
   // 初始化 URL state
   useEffect(() => {
     if (!data) return;
@@ -209,6 +221,13 @@ export default function App() {
       graphRef.current._spatialBounds = spatialInfo.bounds;
     }
     graphRef.current.setData(themeFiltered.nodes, themeFiltered.links);
+    // 剛因為「點到主題外的節點」而清空篩選，資料集這次才真正換成新的，
+    // 這時候再補做 zoomToNode，才會抓得到節點（早一步呼叫會因為節點還不在
+    // 圖上而被 ForceGraph 直接略過）。
+    if (pendingZoomRef.current) {
+      graphRef.current.zoomToNode(pendingZoomRef.current, 1.4);
+      pendingZoomRef.current = null;
+    }
   }, [themeFiltered, setUrlState, spatialMode, spatialInfo]);
 
   useEffect(() => () => {
@@ -284,9 +303,19 @@ export default function App() {
     setCharge(DEFAULTS.charge);
   };
 
+  // Search / InfoCard 的「網絡連結」清單是用未篩選的全量資料算出來的，
+  // 點到的節點有可能不在目前主題篩選範圍內。這種情況下先清空主題篩選（顯示全部），
+  // 否則點擊會像沒反應一樣（zoomToNode 找不到節點會直接略過）。
+  const pendingZoomRef = useRef(null);
   const handleNodeClick = (node) => {
+    const isVisible = themeFiltered?.nodes.some((n) => n.id === node.id);
+    if (!isVisible && activeThemes !== null) {
+      pendingZoomRef.current = node.id;
+      setActiveThemes(null);
+    } else {
+      graphRef.current?.zoomToNode(node.id, 1.4);
+    }
     setUrlState((s) => ({ ...s, node: node.id }));
-    graphRef.current?.zoomToNode(node.id, 1.4);
   };
 
   const onClose = () => setUrlState((s) => ({ ...s, node: '' }));
@@ -362,6 +391,19 @@ export default function App() {
       />
 
       <HoverTooltip node={hover.node} x={hover.x} y={hover.y} />
+
+      {/* 主題全部取消選取時，畫布不會是自動顯示全部，而是真的沒有節點——
+          這裡明講一下，不然看起來會像網站壞了 */}
+      {data && !themeGateOpen && activeThemes !== null && activeThemes.size === 0 && (
+        <div
+          className="absolute inset-0 flex items-center justify-center fade-in"
+          style={{ zIndex: 5, pointerEvents: 'none' }}
+        >
+          <div className="paper-card caption" style={{ padding: '12px 20px', textAlign: 'center' }}>
+            目前沒有選擇任何主題<br />點下方主題，或按「顯示全部」看完整圖譜
+          </div>
+        </div>
+      )}
 
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center fade-in" style={{ zIndex: 100 }}>

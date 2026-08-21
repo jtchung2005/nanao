@@ -1,23 +1,75 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 /**
  * 進圖譜後的底部主題切換列：所有主題常駐顯示 + 「顯示全部」，目前選中的用深色反白標示。
  * 點主題 chip 是疊加式開關：可以同時選多個主題（聯集顯示），已選中的再點一次會取消、
  * 該主題的節點跟著從圖上消失；activeThemes 為 null 代表目前是「顯示全部」狀態。
  */
+
+const INK = '#2a2620';
+const WHITE = '#ffffff';
+
+function hexToRgb(hex) {
+  const c = hex.replace('#', '');
+  return [0, 2, 4].map((i) => parseInt(c.slice(i, i + 2), 16));
+}
+
+function relLuminance([r, g, b]) {
+  const lin = (v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+function contrastRatio(hexA, hexB) {
+  const [l1, l2] = [relLuminance(hexToRgb(hexA)), relLuminance(hexToRgb(hexB))].sort((a, b) => b - a);
+  return (l1 + 0.05) / (l2 + 0.05);
+}
+
+function darken(hex, factor) {
+  const [r, g, b] = hexToRgb(hex).map((v) => Math.max(0, Math.min(255, Math.round(v * factor))));
+  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
+// 主題色不一定跟深色或白色文字都能過 WCAG AA（4.5:1）——沒過的話，
+// 一邊挑對比較好的文字色，一邊把底色漸漸調深，直到達標為止。
+// 只在 chip 選中、需要反白呈現時才會用到，跟畫布上節點本身的顏色無關。
+function accessibleActiveStyle(baseColor) {
+  let bg = baseColor;
+  for (let i = 0; i < 6; i++) {
+    const cInk = contrastRatio(bg, INK);
+    const cWhite = contrastRatio(bg, WHITE);
+    if (Math.max(cInk, cWhite) >= 4.5) {
+      return { bg, text: cInk >= cWhite ? INK : WHITE };
+    }
+    bg = darken(bg, 0.85);
+  }
+  return { bg, text: contrastRatio(bg, INK) >= contrastRatio(bg, WHITE) ? INK : WHITE };
+}
+
 export default function ThemeNavBar({ ref, themes, activeThemes, onToggleTheme, onShowAll }) {
   const showingAll = activeThemes === null;
 
-  // 主題 chip 選中時用該主題在圖譜上對應的顏色；「顯示全部」沒有單一主題色，選中時用中性深色
-  const chipStyle = (active, activeColor) => {
+  // themes 是靜態資料（來自 src/data/themes.js），顏色計算只需要做一次
+  const activeStyles = useMemo(() => {
+    const m = new Map();
+    for (const t of themes) if (t.color) m.set(t.id, accessibleActiveStyle(t.color));
+    return m;
+  }, [themes]);
+
+  // 主題 chip 選中時用該主題在圖譜上對應的顏色（已校正過對比）；
+  // 「顯示全部」沒有單一主題色，選中時用中性深色
+  const chipStyle = (active, themeId) => {
     if (!active) {
       return { cursor: 'pointer', background: 'var(--paper-bg)', color: 'var(--ink-secondary)', borderColor: 'var(--paper-edge)' };
     }
-    const bg = activeColor || 'var(--ink-primary)';
+    const style = themeId ? activeStyles.get(themeId) : null;
+    const bg = style?.bg || 'var(--ink-primary)';
     return {
       cursor: 'pointer',
       background: bg,
-      color: activeColor ? 'var(--ink-primary)' : 'var(--paper-bg)',
+      color: style?.text || 'var(--paper-bg)',
       borderColor: bg,
       fontWeight: 600,
     };
@@ -47,7 +99,7 @@ export default function ThemeNavBar({ ref, themes, activeThemes, onToggleTheme, 
           <button
             key={t.id}
             className="chip"
-            style={chipStyle(!showingAll && activeThemes.has(t.id), t.color)}
+            style={chipStyle(!showingAll && activeThemes.has(t.id), t.id)}
             onClick={() => onToggleTheme(t.id)}
           >
             {t.id}

@@ -20,64 +20,68 @@ export default function ThemeGate({ themes, themeCounts, onEnter, onSkip }) {
       className="paper-bg fade-in"
       style={{
         position: 'fixed', inset: 0, zIndex: 'var(--z-modal)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
         padding: 24, overflowY: 'auto',
       }}
     >
-      <div className="title-1" style={{ marginBottom: 8, textAlign: 'center' }}>南澳知識圖譜</div>
-      <div className="caption" style={{ marginBottom: 28, textAlign: 'center' }}>
-        你想從哪裡開始探索？可以選一個或多個主題
-      </div>
+      {/* justify-content: center 配 overflow: auto 在內容比視窗高時，開頭會被裁掉且滑不到——
+          改成 flex-start + 這層 margin: auto 0 才能在內容矮於視窗時仍置中，內容過高時可以完整往上捲動 */}
+      <div style={{ margin: 'auto 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div className="title-1" style={{ marginBottom: 8, textAlign: 'center' }}>南澳知識圖譜</div>
+        <div className="caption" style={{ marginBottom: 28, textAlign: 'center' }}>
+          你想從哪裡開始探索？可以選一個或多個主題
+        </div>
 
-      <div
-        style={{
-          display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12,
-          maxWidth: 680, marginBottom: 32,
-        }}
-      >
-        {themes.map((t) => {
-          const active = selected.has(t.id);
-          return (
-            <button
-              key={t.id}
-              className={`btn${active ? ' active' : ''}`}
-              onClick={() => toggle(t.id)}
-              style={{
-                flexDirection: 'column', alignItems: 'flex-start', gap: 4,
-                padding: '14px 18px', width: 220, textAlign: 'left', cursor: 'pointer',
-              }}
-            >
-              <span className="body" style={{ fontWeight: 700 }}>{t.id}</span>
-              <span
-                className="tiny"
-                style={{ color: active ? 'inherit' : 'var(--ink-faint)' }}
-              >
-                {t.desc}・{themeCounts?.[t.id] ?? 0} 個節點
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ display: 'flex', gap: 16 }}>
-        <button
-          className="btn"
-          style={{ background: 'transparent', border: 'none', color: 'var(--ink-faint)' }}
-          onClick={onSkip}
-        >
-          跳過，看全部
-        </button>
-        <button
-          className="btn active"
-          disabled={selected.size === 0}
+        <div
           style={{
-            opacity: selected.size === 0 ? 0.4 : 1,
-            cursor: selected.size === 0 ? 'not-allowed' : 'pointer',
+            display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12,
+            maxWidth: 680, marginBottom: 32,
           }}
-          onClick={() => onEnter(Array.from(selected))}
         >
-          進入圖譜 →
-        </button>
+          {themes.map((t) => {
+            const active = selected.has(t.id);
+            return (
+              <button
+                key={t.id}
+                className={`btn${active ? ' active' : ''}`}
+                onClick={() => toggle(t.id)}
+                style={{
+                  flexDirection: 'column', alignItems: 'flex-start', gap: 4,
+                  padding: '14px 18px', width: 220, textAlign: 'left', cursor: 'pointer',
+                }}
+              >
+                <span className="body" style={{ fontWeight: 700 }}>{t.id}</span>
+                <span
+                  className="tiny"
+                  style={{ color: active ? 'inherit' : 'var(--ink-faint)' }}
+                >
+                  {t.desc}・{themeCounts?.[t.id] ?? 0} 個節點
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ display: 'flex', gap: 16 }}>
+          <button
+            className="btn"
+            style={{ background: 'transparent', border: 'none', color: 'var(--ink-faint)' }}
+            onClick={onSkip}
+          >
+            跳過，看全部
+          </button>
+          <button
+            className="btn active"
+            disabled={selected.size === 0}
+            style={{
+              opacity: selected.size === 0 ? 0.4 : 1,
+              cursor: selected.size === 0 ? 'not-allowed' : 'pointer',
+            }}
+            onClick={() => onEnter(Array.from(selected))}
+          >
+            進入圖譜 →
+          </button>
+        </div>
       </div>
     </div>
   );
