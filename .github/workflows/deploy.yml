@@ -38,6 +38,10 @@ jobs:
           pip install pandas
           python scripts/excel_to_json.py
 
+      # 2.5 重新產生主題分類對照表（新增/更名的節點才不會在主題篩選裡永遠消失）
+      - name: Regenerate theme tags
+        run: python scripts/generate_theme_tags.py
+
       # 3. 安裝 Node.js 環境
       - name: Setup Node.js
         uses: actions/setup-node@v4
