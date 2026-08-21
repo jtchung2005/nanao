@@ -50,10 +50,15 @@ export default function ThemeGate({ themes, themeCounts, onEnter, onSkip }) {
                   padding: '18px 20px', textAlign: 'left', cursor: 'pointer',
                 }}
               >
-                <span className="body" style={{ fontWeight: 700, fontSize: 17 }}>{t.id}</span>
+                <span
+                  className="body"
+                  style={{ fontWeight: 700, fontSize: 17, color: active ? 'var(--paper-bg)' : 'var(--ink-primary)' }}
+                >
+                  {t.id}
+                </span>
                 <span
                   className="tiny"
-                  style={{ color: active ? 'inherit' : 'var(--ink-faint)', fontSize: 13 }}
+                  style={{ color: active ? 'var(--paper-bg)' : 'var(--ink-faint)', fontSize: 16 }}
                 >
                   {t.desc}・{themeCounts?.[t.id] ?? 0} 個節點
                 </span>
