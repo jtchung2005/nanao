@@ -27,15 +27,15 @@ export default function ThemeGate({ themes, themeCounts, onEnter, onSkip }) {
       {/* justify-content: center 配 overflow: auto 在內容比視窗高時，開頭會被裁掉且滑不到——
           改成 flex-start + 這層 margin: auto 0 才能在內容矮於視窗時仍置中，內容過高時可以完整往上捲動 */}
       <div style={{ margin: 'auto 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div className="title-1" style={{ marginBottom: 8, textAlign: 'center' }}>南澳知識圖譜</div>
-        <div className="caption" style={{ marginBottom: 28, textAlign: 'center' }}>
+        <div className="title-1" style={{ marginBottom: 8, textAlign: 'center', fontSize: 34 }}>南澳知識圖譜</div>
+        <div className="caption" style={{ marginBottom: 28, textAlign: 'center', fontSize: 18 }}>
           你想從哪裡開始探索？可以選一個或多個主題
         </div>
 
         <div
           style={{
-            display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12,
-            maxWidth: 680, marginBottom: 32,
+            display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 14,
+            maxWidth: 760, marginBottom: 32,
           }}
         >
           {themes.map((t) => {
@@ -46,14 +46,14 @@ export default function ThemeGate({ themes, themeCounts, onEnter, onSkip }) {
                 className={`btn${active ? ' active' : ''}`}
                 onClick={() => toggle(t.id)}
                 style={{
-                  flexDirection: 'column', alignItems: 'flex-start', gap: 4,
-                  padding: '14px 18px', width: 220, textAlign: 'left', cursor: 'pointer',
+                  flexDirection: 'column', alignItems: 'flex-start', gap: 6,
+                  padding: '18px 20px', width: 250, textAlign: 'left', cursor: 'pointer',
                 }}
               >
-                <span className="body" style={{ fontWeight: 700 }}>{t.id}</span>
+                <span className="body" style={{ fontWeight: 700, fontSize: 20 }}>{t.id}</span>
                 <span
                   className="tiny"
-                  style={{ color: active ? 'inherit' : 'var(--ink-faint)' }}
+                  style={{ color: active ? 'inherit' : 'var(--ink-faint)', fontSize: 15 }}
                 >
                   {t.desc}・{themeCounts?.[t.id] ?? 0} 個節點
                 </span>
@@ -65,7 +65,7 @@ export default function ThemeGate({ themes, themeCounts, onEnter, onSkip }) {
         <div style={{ display: 'flex', gap: 16 }}>
           <button
             className="btn"
-            style={{ background: 'transparent', border: 'none', color: 'var(--ink-faint)' }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--ink-faint)', fontSize: 18, padding: '10px 16px' }}
             onClick={onSkip}
           >
             跳過，看全部
@@ -76,6 +76,7 @@ export default function ThemeGate({ themes, themeCounts, onEnter, onSkip }) {
             style={{
               opacity: selected.size === 0 ? 0.4 : 1,
               cursor: selected.size === 0 ? 'not-allowed' : 'pointer',
+              fontSize: 18, padding: '10px 20px', fontWeight: 700,
             }}
             onClick={() => onEnter(Array.from(selected))}
           >

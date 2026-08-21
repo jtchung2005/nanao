@@ -60,18 +60,20 @@ export default function ThemeNavBar({ ref, themes, activeThemes, onToggleTheme, 
 
   // 主題 chip 選中時用該主題在圖譜上對應的顏色（已校正過對比）；
   // 「顯示全部」沒有單一主題色，選中時用中性深色
+  // 字級跟內距特意放大，方便長輩在手機上也看得清楚、點得到
   const chipStyle = (active, themeId) => {
+    const base = { cursor: 'pointer', fontSize: 16, padding: '8px 14px' };
     if (!active) {
-      return { cursor: 'pointer', background: 'var(--paper-bg)', color: 'var(--ink-secondary)', borderColor: 'var(--paper-edge)' };
+      return { ...base, background: 'var(--paper-bg)', color: 'var(--ink-secondary)', borderColor: 'var(--paper-edge)' };
     }
     const style = themeId ? activeStyles.get(themeId) : null;
     const bg = style?.bg || 'var(--ink-primary)';
     return {
-      cursor: 'pointer',
+      ...base,
       background: bg,
       color: style?.text || 'var(--paper-bg)',
       borderColor: bg,
-      fontWeight: 600,
+      fontWeight: 700,
     };
   };
 
@@ -87,7 +89,7 @@ export default function ThemeNavBar({ ref, themes, activeThemes, onToggleTheme, 
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span className="tiny" style={{ color: 'var(--ink-faint)', whiteSpace: 'nowrap' }}>切換主題</span>
+        <span className="tiny" style={{ color: 'var(--ink-faint)', whiteSpace: 'nowrap', fontSize: 14 }}>切換主題</span>
         <button
           className="chip"
           style={chipStyle(showingAll)}
