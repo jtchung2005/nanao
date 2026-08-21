@@ -1,12 +1,18 @@
 import React from 'react';
 
 /**
- * 進圖譜後的底部主題切換列：顯示目前未選中的主題 + 「顯示全部」。
+ * 進圖譜後的底部主題切換列：所有主題常駐顯示 + 「顯示全部」，目前選中的用深色反白標示。
  * 點主題 chip 會切換（取代）成只看該主題；點「顯示全部」清空主題篩選看完整圖譜。
  */
 export default function ThemeNavBar({ ref, themes, activeThemes, onSwitchTheme, onShowAll }) {
   const showingAll = activeThemes.size === 0;
-  const inactiveThemes = themes.filter((t) => !activeThemes.has(t.id));
+
+  const chipStyle = (active) => ({
+    cursor: 'pointer',
+    background: active ? 'var(--ink-primary)' : 'var(--paper-bg)',
+    color: active ? 'var(--paper-bg)' : 'var(--ink-secondary)',
+    borderColor: active ? 'var(--ink-primary)' : 'var(--paper-edge)',
+  });
 
   return (
     <div
@@ -23,21 +29,16 @@ export default function ThemeNavBar({ ref, themes, activeThemes, onSwitchTheme, 
         <span className="tiny" style={{ color: 'var(--ink-faint)', whiteSpace: 'nowrap' }}>切換主題</span>
         <button
           className="chip"
-          style={{
-            cursor: 'pointer',
-            background: showingAll ? 'var(--ink-primary)' : 'var(--paper-bg)',
-            color: showingAll ? 'var(--paper-bg)' : 'var(--ink-secondary)',
-            borderColor: showingAll ? 'var(--ink-primary)' : 'var(--paper-edge)',
-          }}
+          style={chipStyle(showingAll)}
           onClick={onShowAll}
         >
           顯示全部
         </button>
-        {inactiveThemes.map((t) => (
+        {themes.map((t) => (
           <button
             key={t.id}
             className="chip"
-            style={{ cursor: 'pointer' }}
+            style={chipStyle(activeThemes.has(t.id))}
             onClick={() => onSwitchTheme(t.id)}
           >
             {t.id}
