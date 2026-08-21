@@ -9,13 +9,13 @@ import { setNodeSizeScale } from './graph/Renderer.js';
 import { getNodeLonLat } from './graph/ForceGraph.js';
 import InfoCard from './panels/InfoCard.jsx';
 import Search from './panels/Search.jsx';
-import Legend from './panels/Legend.jsx';
-import RelationFilter from './panels/RelationFilter.jsx';
-import GroupSidebar from './panels/GroupSidebar.jsx';
-import TimelineSlider from './panels/TimelineSlider.jsx';
 import Minimap from './panels/Minimap.jsx';
 import GraphControl from './panels/GraphControl.jsx';
 import OnboardingTour from './panels/OnboardingTour.jsx';
+import ThemeGate from './panels/ThemeGate.jsx';
+import ThemeNavBar from './panels/ThemeNavBar.jsx';
+import { THEMES } from './data/themes.js';
+import themeTags from './data/themeTags.json';
 
 const URL_PARAMS = {
   node:   { default: '', ...codecs.string },
@@ -38,11 +38,7 @@ export default function App() {
 
   const [hover, setHover] = useState({ node: null, x: 0, y: 0 });
   const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
-  const [collapsedGroups, setCollapsedGroups] = useState(new Set());
-  const [groupHighlight, setGroupHighlight] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= BP_MOBILE);
   const [ctrlOpen, setCtrlOpen] = useState(window.innerWidth >= BP_MOBILE);
-  const [bottomOpen, setBottomOpen] = useState(true);
   const [bottomBarH, setBottomBarH] = useState(150);
   const [ctrlH, setCtrlH] = useState(40);
 
@@ -53,6 +49,33 @@ export default function App() {
 
   const [urlState, setUrlState] = useUrlState(URL_PARAMS);
   const isMobile = vp.w < BP_MOBILE;
+
+  // ── 主題選擇 ──────────────────────────────────────
+  const [themeGateOpen, setThemeGateOpen] = useState(true);
+  const [activeThemes, setActiveThemes] = useState(new Set());
+
+  const themeNodeSets = useMemo(() => {
+    const m = new Map();
+    for (const [themeId, ids] of Object.entries(themeTags)) m.set(themeId, new Set(ids));
+    return m;
+  }, []);
+
+  const themeCounts = useMemo(() => {
+    const c = {};
+    for (const [themeId, set] of themeNodeSets) c[themeId] = set.size;
+    return c;
+  }, [themeNodeSets]);
+
+  const handleGateEnter = (ids) => {
+    setActiveThemes(new Set(ids));
+    setThemeGateOpen(false);
+  };
+  const handleGateSkip = () => {
+    setActiveThemes(new Set());
+    setThemeGateOpen(false);
+  };
+  const handleSwitchTheme = (id) => setActiveThemes(new Set([id]));
+  const handleShowAll = () => setActiveThemes(new Set());
 
   // 初始化 URL state
   useEffect(() => {
@@ -71,7 +94,6 @@ export default function App() {
     const onResize = () => {
       setVp({ w: window.innerWidth, h: window.innerHeight });
       if (window.innerWidth < BP_MOBILE) {
-        setSidebarOpen(false);
         setCtrlOpen(false);
       }
     };
@@ -79,13 +101,13 @@ export default function App() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  // 量測底部 bar / 控制面板高度
+  // 量測底部主題列高度
   useEffect(() => {
     if (!bottomRef.current) return;
     const ro = new ResizeObserver((es) => setBottomBarH(es[0].contentRect.height));
     ro.observe(bottomRef.current);
     return () => ro.disconnect();
-  }, []);
+  }, [themeGateOpen]);
 
   useEffect(() => {
     if (!ctrlRef.current) { setCtrlH(40); return; }
@@ -120,7 +142,7 @@ export default function App() {
     };
   }, [data]);
 
-  // 過濾
+  // 過濾（類別／關係／年份 —— UI 已拿掉，實際上永遠是全開，維持底層邏輯不變）
   const filtered = useMemo(() => {
     if (!data) return null;
     const ag = urlState.mg.size ? urlState.mg : new Set(data.meta_groups.map((g) => g.id));
@@ -147,8 +169,27 @@ export default function App() {
     return { nodes, links };
   }, [data, urlState.mg, urlState.mr, urlState.bt, urlState.od, urlState.years]);
 
+  // 主題篩選層：疊加在 filtered 之上，真正餵給圖譜渲染的是這一層
+  const themeFiltered = useMemo(() => {
+    if (!filtered) return filtered;
+    if (activeThemes.size === 0) return filtered;
+    const allowIds = new Set();
+    for (const themeId of activeThemes) {
+      const set = themeNodeSets.get(themeId);
+      if (set) for (const id of set) allowIds.add(id);
+    }
+    const nodes = filtered.nodes.filter((n) => allowIds.has(n.id));
+    const ids = new Set(nodes.map((n) => n.id));
+    const links = filtered.links.filter((l) => {
+      const s = typeof l.source === 'object' ? l.source.id : l.source;
+      const t = typeof l.target === 'object' ? l.target.id : l.target;
+      return ids.has(s) && ids.has(t);
+    });
+    return { nodes, links };
+  }, [filtered, activeThemes, themeNodeSets]);
+
   useEffect(() => {
-    if (!filtered || !containerRef.current) return;
+    if (!themeFiltered || !containerRef.current) return;
     if (!graphRef.current) {
       graphRef.current = new ForceGraph(containerRef.current);
       graphRef.current.on('click', (n) => setUrlState((s) => ({ ...s, node: n?.id ?? '' })));
@@ -159,8 +200,8 @@ export default function App() {
       graphRef.current._spatialMode = spatialMode && spatialInfo.count > 0;
       graphRef.current._spatialBounds = spatialInfo.bounds;
     }
-    graphRef.current.setData(filtered.nodes, filtered.links);
-  }, [filtered, setUrlState, spatialMode, spatialInfo]);
+    graphRef.current.setData(themeFiltered.nodes, themeFiltered.links);
+  }, [themeFiltered, setUrlState, spatialMode, spatialInfo]);
 
   useEffect(() => () => {
     if (graphRef.current) {
@@ -195,18 +236,6 @@ export default function App() {
 
   const selected = urlState.node ? allNodesById.get(urlState.node) : null;
 
-  const applyGroupHighlight = (idSet) => {
-    const g = graphRef.current;
-    if (!g) return;
-    const linkKeys = new Set();
-    for (const l of g.links) {
-      const s = l.source.id || l.source;
-      const t = l.target.id || l.target;
-      if (idSet.has(s) && idSet.has(t)) linkKeys.add(s + '|' + t + '|' + l.label);
-    }
-    g.setHighlight(idSet, linkKeys);
-  };
-
   useEffect(() => {
     const g = graphRef.current;
     if (!g) return;
@@ -214,40 +243,18 @@ export default function App() {
     if (selected) {
       const r = computeNeighbors(selected.id, g.links);
       g.setHighlight(r?.nodeIds, r?.linkKeys);
-      setGroupHighlight(null);
-    } else if (groupHighlight) {
-      applyGroupHighlight(groupHighlight.ids);
     } else {
       g.setHighlight(null, null);
     }
   }, [selected]);
-
-  const handleHighlightIds = (ids, key) => {
-    if (groupHighlight?.key === key) {
-      setGroupHighlight(null);
-      const g = graphRef.current;
-      if (g) g.setHighlight(null, null);
-      return;
-    }
-    setGroupHighlight({ ids, key });
-    if (urlState.node) setUrlState((s) => ({ ...s, node: '' }));
-    applyGroupHighlight(ids);
-  };
 
   const highlightIds = useMemo(() => {
     if (selected && graphRef.current) {
       const r = computeNeighbors(selected.id, graphRef.current.links);
       return r?.nodeIds ?? new Set([selected.id]);
     }
-    if (groupHighlight) return groupHighlight.ids;
     return null;
-  }, [selected, groupHighlight, filtered]);
-
-  const toggleSetIn = (key, id) => setUrlState((s) => {
-    const ns = new Set(s[key]);
-    if (ns.has(id)) ns.delete(id); else ns.add(id);
-    return { ...s, [key]: ns };
-  });
+  }, [selected, themeFiltered]);
 
   const reset = () => {
     if (!data) return;
@@ -259,8 +266,7 @@ export default function App() {
       od: false,
       years: data.stats.year_range.slice(),
     });
-    setCollapsedGroups(new Set());
-    setGroupHighlight(null);
+    setActiveThemes(new Set());
     if (graphRef.current) graphRef.current.setHighlight(null, null);
   };
 
@@ -270,8 +276,6 @@ export default function App() {
     setCharge(DEFAULTS.charge);
   };
 
-  const focusNodeGroup = (mg) => setUrlState((s) => ({ ...s, mg: new Set([mg]) }));
-
   const handleNodeClick = (node) => {
     setUrlState((s) => ({ ...s, node: node.id }));
     graphRef.current?.zoomToNode(node.id, 1.4);
@@ -279,14 +283,14 @@ export default function App() {
 
   const onClose = () => setUrlState((s) => ({ ...s, node: '' }));
 
-  // ── 首次進入導覽 ──────────────────────────────────
+  // ── 首次進入導覽（選完主題、進圖譜後才會跑）────────
   const [tourActive, setTourActive] = useState(false);
   useEffect(() => {
-    if (!data || loading) return undefined;
+    if (!data || loading || themeGateOpen) return undefined;
     if (localStorage.getItem('nanao_tour_seen')) return undefined;
     const t = setTimeout(() => setTourActive(true), 900);
     return () => clearTimeout(t);
-  }, [data, loading]);
+  }, [data, loading, themeGateOpen]);
 
   const finishTour = () => {
     setTourActive(false);
@@ -303,7 +307,6 @@ export default function App() {
       degree[s] = (degree[s] || 0) + 1;
       degree[t] = (degree[t] || 0) + 1;
     }
-    // 連結數接近 5 個最理想——夠展示網絡連結功能，又不會讓示範清單長到爆版
     let best = null, bestScore = -Infinity;
     for (const n of data.nodes) {
       const d = degree[n.id] || 0;
@@ -314,38 +317,8 @@ export default function App() {
     return best;
   }, [data]);
 
-  // 挑節點數最多的分類，導覽時示範「點類別會高亮」的效果
-  const demoGroup = useMemo(() => {
-    if (!data) return null;
-    let best = null;
-    for (const g of data.meta_groups) {
-      if (!best || g.count > best.count) best = g;
-    }
-    return best;
-  }, [data]);
-  const demoGroupKey = demoGroup ? `mg:${demoGroup.id}` : null;
-  const demoGroupIds = useMemo(() => {
-    if (!demoGroup || !data) return null;
-    return new Set(data.nodes.filter((n) => n.meta_group === demoGroup.id).map((n) => n.id));
-  }, [demoGroup, data]);
-
   const tourSteps = useMemo(() => ([
     { target: 'tour-search', text: '輸入關鍵字，可以快速找到任何人物、地點或事件節點。' },
-    {
-      target: 'tour-sidebar',
-      text: '左側是分類清單，點擊分類名稱（不是右邊的 ⊙）可以讓圖譜特別亮起那個類別的節點。',
-      onEnter: () => { if (demoGroupIds && demoGroupKey) handleHighlightIds(demoGroupIds, demoGroupKey); },
-    },
-    {
-      target: demoGroup ? `tour-cat-${demoGroup.id}` : 'tour-sidebar',
-      text: `其他節點會變暗襯托出來——像現在這樣，亮起來的就是「${demoGroup?.id ?? ''}」。再點一次可以取消。`,
-      // 直接清空，不依賴當下的 groupHighlight state —— effect 的 cleanup 是用進入當下
-      // 那個 step 物件的 closure 執行，此時 state 可能還沒更新，用 toggle 判斷會抓到舊值。
-      onLeave: () => {
-        setGroupHighlight(null);
-        graphRef.current?.setHighlight(null, null);
-      },
-    },
     { target: 'tour-canvas', text: '在圖上點擊任一個圓點節點，可以看到它的詳細介紹。' },
     {
       target: 'tour-infocard',
@@ -358,8 +331,8 @@ export default function App() {
       onEnter: () => { document.getElementById('tour-infocard-related')?.scrollIntoView({ block: 'nearest' }); },
       onLeave: () => { setUrlState((s) => (s.node === demoNodeId ? { ...s, node: '' } : s)); },
     },
-    { target: 'tour-timeline', text: '拖曳時間軸兩端的滑桿，可以只顯示特定年代範圍內的節點。' },
-  ]), [demoNodeId, demoGroup, demoGroupIds, demoGroupKey, setUrlState]);
+    { target: 'tour-theme-nav', text: '畫面下方可以隨時切換想看的主題，或按「顯示全部」看完整圖譜。' },
+  ]), [demoNodeId, setUrlState]);
 
   // ── Layout ──────────────────────────────────────
   const sidePanelBottom = bottomBarH + 24;
@@ -416,8 +389,8 @@ export default function App() {
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
             {!isMobile && (
               <span className="tiny" style={{ whiteSpace: 'nowrap' }}>
-                節點 {filtered?.nodes.length ?? 0}/{data.stats.nodes} ・
-                關係 {filtered?.links.length ?? 0}/{data.stats.links}
+                節點 {themeFiltered?.nodes.length ?? 0}/{data.stats.nodes} ・
+                關係 {themeFiltered?.links.length ?? 0}/{data.stats.links}
               </span>
             )}
             <button className="btn" onClick={() => graphRef.current?.zoomToFit()} title="全覽">⛶</button>
@@ -425,22 +398,6 @@ export default function App() {
             <button className="btn" onClick={() => setTourActive(true)} title="使用說明">？</button>
           </div>
         </div>
-      )}
-
-      {/* Left sidebar */}
-      {data && (
-        <GroupSidebar
-          nodes={filtered?.nodes ?? data.nodes}
-          onPickNodeGroup={focusNodeGroup}
-          onPickNode={handleNodeClick}
-          onHighlightIds={handleHighlightIds}
-          activeHighlightKey={groupHighlight?.key ?? null}
-          collapsed={collapsedGroups}
-          setCollapsed={setCollapsedGroups}
-          open={sidebarOpen}
-          setOpen={setSidebarOpen}
-          bottomOffset={sidePanelBottom}
-        />
       )}
 
       {/* Right: GraphControl */}
@@ -482,101 +439,28 @@ export default function App() {
         />
       )}
 
-      {/* BottomBar：永遠 left:12 / right:12 */}
-      {data && urlState.years && (
-        <div
+      {/* 底部主題切換列 */}
+      {data && !themeGateOpen && (
+        <ThemeNavBar
           ref={bottomRef}
-          className="paper-card"
-          style={{
-            position: 'absolute', bottom: 12, left: 12, right: 12,
-            padding: bottomOpen ? '10px 16px 6px' : '6px 16px',
-            display: 'flex', flexDirection: 'column', gap: 8,
-            zIndex: 25,
-            transition: 'padding 0.2s ease',
-          }}
-        >
-          {!bottomOpen ? (
-            /* 收合狀態 */
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="tiny" style={{ color: 'var(--ink-secondary)', fontWeight: 600 }}>
-                ⏱ 時間軸與篩選控制
-              </span>
-              <button
-                className="btn"
-                onClick={() => setBottomOpen(true)}
-                style={{ padding: '2px 10px', fontSize: 11 }}
-              >
-                ▲ 展開面板
-              </button>
-            </div>
-          ) : (
-            /* 展開狀態 */
-            <>
-              {/* Row 1: Timeline + 收合按鈕 */}
-              <div id="tour-timeline" style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
-                <TimelineSlider
-                  min={data.stats.year_range[0]}
-                  max={data.stats.year_range[1]}
-                  value={urlState.years}
-                  nodes={data.nodes}
-                  onChange={(yrs) => setUrlState((s) => ({ ...s, years: yrs }))}
-                  onlyDated={urlState.od}
-                  onToggleOnlyDated={() => setUrlState((s) => ({ ...s, od: !s.od }))}
-                />
-                <button
-                  className="btn"
-                  onClick={() => setBottomOpen(false)}
-                  title="收合面板"
-                  style={{ padding: '2px 8px', fontSize: 11, whiteSpace: 'nowrap', marginBottom: 4 }}
-                >
-                  ▼ 收合
-                </button>
-              </div>
-
-              <hr className="divider" style={{ margin: '2px 0' }} />
-
-              {/* Row 2: Legend (groups) | Relations */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <span className="tiny" style={{ color: 'var(--ink-faint)' }}>節點篩選</span>
-                <Legend
-                  metaGroups={data.meta_groups.filter((g) => g.count > 0)}
-                  activeGroups={urlState.mg}
-                  onToggleGroup={(id) => toggleSetIn('mg', id)}
-                  onlyBreakthrough={urlState.bt}
-                  onToggleBreakthrough={() => setUrlState((s) => ({ ...s, bt: !s.bt }))}
-                  breakthroughCount={data.stats.breakthroughs}
-                />
-                {!isMobile && <div style={{ height: 22, width: 1, background: 'var(--ink-line)' }} />}
-                <span className="tiny" style={{ color: 'var(--ink-faint)' }}>關係篩選</span>
-                <RelationFilter
-                  metaRelations={data.meta_relations.filter((r) => r.count > 0)}
-                  active={urlState.mr}
-                  onToggle={(id) => toggleSetIn('mr', id)}
-                />
-              </div>
-
-              {/* Row 3: 版權 */}
-              <div
-                className="tiny"
-                style={{
-                  borderTop: '1px solid var(--ink-line)',
-                  paddingTop: 4, marginTop: 2,
-                  textAlign: 'center',
-                  color: 'var(--ink-faint)', fontSize: 10,
-                  lineHeight: 1.5,
-                }}
-              >
-                © 國立陽明交通大學跨領域設計科學研究中心 (TDIS) ・ 曾聖凱 助理教授・
-                <a href="mailto:sky@arch.nycu.edu.tw" style={{ color: 'inherit', textDecoration: 'none' }}>
-                  sky@arch.nycu.edu.tw
-                </a>
-              </div>
-            </>
-          )}
-        </div>
+          themes={THEMES}
+          activeThemes={activeThemes}
+          onSwitchTheme={handleSwitchTheme}
+          onShowAll={handleShowAll}
+        />
       )}
 
       <OnboardingTour active={tourActive} steps={tourSteps} onFinish={finishTour} />
+
+      {/* 進站主題選擇蓋板 */}
+      {data && themeGateOpen && (
+        <ThemeGate
+          themes={THEMES}
+          themeCounts={themeCounts}
+          onEnter={handleGateEnter}
+          onSkip={handleGateSkip}
+        />
+      )}
     </div>
   );
 }
