@@ -146,13 +146,24 @@ try:
                     continue
                 n = node_dict[tid]
                 
-                # 1. 追加文字敘述
+                # 1. 處理說明文字 (加上【南澳記憶庫】標題並去重)
                 if pd.notna(row.get('content')) and str(row['content']).strip():
                     new_content = str(row['content']).strip()
-                    if n.get('info'):
-                        n['info'] = f"{n['info']}\n\n【南澳記憶庫】\n{new_content}"
-                    else:
-                        n['info'] = new_content
+                    header = "【南澳記憶庫】"
+                    existing_info = n.get('info', '').strip()
+                    
+                    if not existing_info:
+                        # 本來完全沒文字 -> 直接加標題與文字
+                        n['info'] = f"{header}\n{new_content}"
+                    elif existing_info == new_content:
+                        # 本來文字與 Supabase 完全一致（但缺少標題） -> 直接補上標題
+                        n['info'] = f"{header}\n{new_content}"
+                    elif existing_info == f"{header}\n{new_content}":
+                        # 已經補過標題且內容一致 -> 不重複追加
+                        pass
+                    elif new_content not in existing_info:
+                        # 本來有不同的文字，且新文字尚未包含在內 -> 在尾端追加標題與新內容
+                        n['info'] = f"{existing_info}\n\n{header}\n{new_content}"
                 
                 # 2. 補齊地理座標
                 try:
@@ -163,7 +174,7 @@ try:
                 except ValueError:
                     pass
                 
-                # 3. 補充圖片 URL
+                # 3. 補充圖片 URL (不論文字是否重複，有圖片就放上去)
                 if pd.notna(row.get('image_url')) and str(row['image_url']).strip():
                     n['Image'] = str(row['image_url']).strip()
                 
@@ -171,13 +182,7 @@ try:
                 if pd.notna(row.get('place_name')) and str(row['place_name']).strip():
                     n['address'] = str(row['place_name']).strip()
                 
-                # 5. 補齊年份
-                if pd.notna(row.get('period_text')) and str(row['period_text']).strip():
-                    years = re.findall(r'\d{4}', str(row['period_text']))
-                    if years and not n.get('start_year'):
-                        n['start_year'] = years[0]
-                
-                # 6. 補充投稿來源與分享者
+                # 5. 補充投稿來源與分享者 (不論文字是否重複，有提供者就放上去)
                 sharer = str(row['sharer_name']).strip() if pd.notna(row.get('sharer_name')) else ''
                 source = str(row['source_label']).strip() if pd.notna(row.get('source_label')) else ''
                 credits_parts = [p for p in [source, sharer] if p and p.lower() not in ['nan', 'none']]
