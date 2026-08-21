@@ -14,7 +14,7 @@ DEST = ROOT / 'src' / 'data' / 'themeTags.json'
 ORG_GROUPS = {'政府機關', '政府機構', '非營利組織', '私人企業', '大學', '組織'}
 
 RULES = {
-    '泰雅人物與故事': lambda n, t: group(n) in ('人物', '族群', '群體'),
+    '泰雅人物': lambda n, t: group(n) in ('人物', '族群', '群體'),
     '部落遷徙與歷史事件': lambda n, t: group(n) == '事件' or re.search(
         '遷村|理蕃|遷徙|討伐|侵墾|舊社|禁伐政策|林班地衝突|山地平地化', t),
     '尋根活動與文化傳承': lambda n, t: (
