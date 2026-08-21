@@ -51,8 +51,9 @@ export default function App() {
   const isMobile = vp.w < BP_MOBILE;
 
   // ── 主題選擇 ──────────────────────────────────────
+  // activeThemes: null = 顯示全部；Set（可為空集合）= 只顯示疊加選中的主題
   const [themeGateOpen, setThemeGateOpen] = useState(true);
-  const [activeThemes, setActiveThemes] = useState(new Set());
+  const [activeThemes, setActiveThemes] = useState(null);
 
   const themeNodeSets = useMemo(() => {
     const m = new Map();
@@ -71,11 +72,18 @@ export default function App() {
     setThemeGateOpen(false);
   };
   const handleGateSkip = () => {
-    setActiveThemes(new Set());
+    setActiveThemes(null);
     setThemeGateOpen(false);
   };
-  const handleSwitchTheme = (id) => setActiveThemes(new Set([id]));
-  const handleShowAll = () => setActiveThemes(new Set());
+  // 點主題 chip：疊加式開關——已選中的再點會取消，圖上該主題的節點跟著消失
+  const handleToggleTheme = (id) => {
+    setActiveThemes((prev) => {
+      const next = new Set(prev ?? []);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const handleShowAll = () => setActiveThemes(null);
 
   // 初始化 URL state
   useEffect(() => {
@@ -172,7 +180,7 @@ export default function App() {
   // 主題篩選層：疊加在 filtered 之上，真正餵給圖譜渲染的是這一層
   const themeFiltered = useMemo(() => {
     if (!filtered) return filtered;
-    if (activeThemes.size === 0) return filtered;
+    if (activeThemes === null) return filtered; // 顯示全部
     const allowIds = new Set();
     for (const themeId of activeThemes) {
       const set = themeNodeSets.get(themeId);
@@ -266,7 +274,7 @@ export default function App() {
       od: false,
       years: data.stats.year_range.slice(),
     });
-    setActiveThemes(new Set());
+    setActiveThemes(null);
     if (graphRef.current) graphRef.current.setHighlight(null, null);
   };
 
@@ -445,7 +453,7 @@ export default function App() {
           ref={bottomRef}
           themes={THEMES}
           activeThemes={activeThemes}
-          onSwitchTheme={handleSwitchTheme}
+          onToggleTheme={handleToggleTheme}
           onShowAll={handleShowAll}
         />
       )}

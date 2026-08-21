@@ -2,10 +2,11 @@ import React from 'react';
 
 /**
  * 進圖譜後的底部主題切換列：所有主題常駐顯示 + 「顯示全部」，目前選中的用深色反白標示。
- * 點主題 chip 會切換（取代）成只看該主題；點「顯示全部」清空主題篩選看完整圖譜。
+ * 點主題 chip 是疊加式開關：可以同時選多個主題（聯集顯示），已選中的再點一次會取消、
+ * 該主題的節點跟著從圖上消失；activeThemes 為 null 代表目前是「顯示全部」狀態。
  */
-export default function ThemeNavBar({ ref, themes, activeThemes, onSwitchTheme, onShowAll }) {
-  const showingAll = activeThemes.size === 0;
+export default function ThemeNavBar({ ref, themes, activeThemes, onToggleTheme, onShowAll }) {
+  const showingAll = activeThemes === null;
 
   const chipStyle = (active) => ({
     cursor: 'pointer',
@@ -38,8 +39,8 @@ export default function ThemeNavBar({ ref, themes, activeThemes, onSwitchTheme, 
           <button
             key={t.id}
             className="chip"
-            style={chipStyle(activeThemes.has(t.id))}
-            onClick={() => onSwitchTheme(t.id)}
+            style={chipStyle(!showingAll && activeThemes.has(t.id))}
+            onClick={() => onToggleTheme(t.id)}
           >
             {t.id}
           </button>
