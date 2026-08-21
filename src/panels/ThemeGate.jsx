@@ -34,8 +34,8 @@ export default function ThemeGate({ themes, themeCounts, onEnter, onSkip }) {
 
         <div
           style={{
-            display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 14,
-            maxWidth: 760, marginBottom: 32,
+            display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14,
+            width: '100%', maxWidth: 940, marginBottom: 32,
           }}
         >
           {themes.map((t) => {
@@ -47,13 +47,13 @@ export default function ThemeGate({ themes, themeCounts, onEnter, onSkip }) {
                 onClick={() => toggle(t.id)}
                 style={{
                   flexDirection: 'column', alignItems: 'flex-start', gap: 6,
-                  padding: '18px 20px', width: 250, textAlign: 'left', cursor: 'pointer',
+                  padding: '18px 20px', textAlign: 'left', cursor: 'pointer',
                 }}
               >
-                <span className="body" style={{ fontWeight: 700, fontSize: 20 }}>{t.id}</span>
+                <span className="body" style={{ fontWeight: 700, fontSize: 17 }}>{t.id}</span>
                 <span
                   className="tiny"
-                  style={{ color: active ? 'inherit' : 'var(--ink-faint)', fontSize: 15 }}
+                  style={{ color: active ? 'inherit' : 'var(--ink-faint)', fontSize: 13 }}
                 >
                   {t.desc}・{themeCounts?.[t.id] ?? 0} 個節點
                 </span>
