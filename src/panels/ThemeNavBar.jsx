@@ -8,12 +8,20 @@ import React from 'react';
 export default function ThemeNavBar({ ref, themes, activeThemes, onToggleTheme, onShowAll }) {
   const showingAll = activeThemes === null;
 
-  const chipStyle = (active) => ({
-    cursor: 'pointer',
-    background: active ? 'var(--ink-primary)' : 'var(--paper-bg)',
-    color: active ? 'var(--paper-bg)' : 'var(--ink-secondary)',
-    borderColor: active ? 'var(--ink-primary)' : 'var(--paper-edge)',
-  });
+  // 主題 chip 選中時用該主題在圖譜上對應的顏色；「顯示全部」沒有單一主題色，選中時用中性深色
+  const chipStyle = (active, activeColor) => {
+    if (!active) {
+      return { cursor: 'pointer', background: 'var(--paper-bg)', color: 'var(--ink-secondary)', borderColor: 'var(--paper-edge)' };
+    }
+    const bg = activeColor || 'var(--ink-primary)';
+    return {
+      cursor: 'pointer',
+      background: bg,
+      color: activeColor ? 'var(--ink-primary)' : 'var(--paper-bg)',
+      borderColor: bg,
+      fontWeight: 600,
+    };
+  };
 
   return (
     <div
@@ -39,7 +47,7 @@ export default function ThemeNavBar({ ref, themes, activeThemes, onToggleTheme, 
           <button
             key={t.id}
             className="chip"
-            style={chipStyle(!showingAll && activeThemes.has(t.id))}
+            style={chipStyle(!showingAll && activeThemes.has(t.id), t.color)}
             onClick={() => onToggleTheme(t.id)}
           >
             {t.id}
