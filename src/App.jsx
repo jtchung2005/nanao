@@ -10,6 +10,7 @@ import { getNodeLonLat } from './graph/ForceGraph.js';
 import InfoCard from './panels/InfoCard.jsx';
 import Search from './panels/Search.jsx';
 import Minimap from './panels/Minimap.jsx';
+import RelationLegend from './panels/RelationLegend.jsx';
 import GraphControl from './panels/GraphControl.jsx';
 import OnboardingTour from './panels/OnboardingTour.jsx';
 import ThemeGate from './panels/ThemeGate.jsx';
@@ -474,6 +475,14 @@ export default function App() {
 
       {/* Minimap */}
       {data && !isMobile && <Minimap graph={graphRef.current} bottomOffset={minimapBottom} />}
+
+      {/* 左下角：連線代表的關係說明 */}
+      {data && !themeGateOpen && (
+        <RelationLegend
+          metaRelations={data.meta_relations.filter((r) => r.count > 0)}
+          bottomOffset={minimapBottom}
+        />
+      )}
 
       {/* InfoCard */}
       {selected && (
