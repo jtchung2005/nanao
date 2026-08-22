@@ -108,18 +108,6 @@ export default function ThemeNavBar({ ref, themes, activeThemes, onToggleTheme, 
           </button>
         ))}
       </div>
-      <div
-        className="tiny"
-        style={{
-          borderTop: '1px solid var(--ink-line)', paddingTop: 4, textAlign: 'center',
-          color: 'var(--ink-faint)', fontSize: 10, lineHeight: 1.5,
-        }}
-      >
-        © 國立陽明交通大學跨領域設計科學研究中心 (TDIS) ・ 曾聖凱 助理教授・
-        <a href="mailto:sky@arch.nycu.edu.tw" style={{ color: 'inherit', textDecoration: 'none' }}>
-          sky@arch.nycu.edu.tw
-        </a>
-      </div>
     </div>
   );
 }
