@@ -48,6 +48,26 @@ export default function App() {
   const [charge, setCharge] = useState(DEFAULTS.charge);
   const [spatialMode, setSpatialMode] = useState(true);
 
+  // ── 介面文字放大（Aa 按鈕）──────────────────────────
+  // 只縮放純 CSS 定位的面板（見下面 JSX），不影響圖上節點標籤/滑鼠提示框/導覽，
+  // 選擇會記住，下次造訪不用重選
+  const TEXT_SCALE_STEPS = [1, 1.15, 1.3];
+  const [textScale, setTextScale] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem('nanao_text_scale'));
+      return TEXT_SCALE_STEPS.includes(saved) ? saved : 1;
+    } catch {
+      return 1;
+    }
+  });
+  const cycleTextScale = () => {
+    setTextScale((s) => {
+      const next = TEXT_SCALE_STEPS[(TEXT_SCALE_STEPS.indexOf(s) + 1) % TEXT_SCALE_STEPS.length];
+      try { localStorage.setItem('nanao_text_scale', String(next)); } catch { /* 無痕模式等情況忽略 */ }
+      return next;
+    });
+  };
+
   const [urlState, setUrlState] = useUrlState(URL_PARAMS);
   const isMobile = vp.w < BP_MOBILE;
 
@@ -393,6 +413,11 @@ export default function App() {
 
       <HoverTooltip node={hover.node} x={hover.x} y={hover.y} />
 
+      {/* 「Aa」放大字體只包住下面這些純靠 CSS 定位的面板；圖上節點標籤、滑鼠提示框、
+          操作導覽是靠 JS 即時量測畫面座標算位置，包進來的話字級一放大反而會跟著跑位，
+          所以特意留在這層縮放範圍之外。 */}
+      <div style={{ position: 'fixed', inset: 0, zoom: textScale }}>
+
       {/* 主題全部取消選取時，畫布不會是自動顯示全部，而是真的沒有節點——
           這裡明講一下，不然看起來會像網站壞了 */}
       {data && !themeGateOpen && activeThemes !== null && activeThemes.size === 0 && (
@@ -446,6 +471,14 @@ export default function App() {
             )}
             <button className="btn" onClick={() => graphRef.current?.zoomToFit()} title="全覽">⛶</button>
             <button className="btn" onClick={reset} title="重置篩選">↺</button>
+            <button
+              className="btn"
+              onClick={cycleTextScale}
+              title="放大介面文字（點擊切換大小）"
+              style={{ fontWeight: 700 }}
+            >
+              Aa{textScale > 1 ? '+'.repeat(TEXT_SCALE_STEPS.indexOf(textScale)) : ''}
+            </button>
             <button className="btn" onClick={() => setTourActive(true)} title="使用說明">？</button>
           </div>
         </div>
@@ -509,9 +542,12 @@ export default function App() {
         />
       )}
 
+      </div>
+
       <OnboardingTour active={tourActive} steps={tourSteps} onFinish={finishTour} />
 
-      {/* 進站主題選擇蓋板 */}
+      {/* 進站主題選擇蓋板，跟上面同一個縮放範圍（純 CSS 定位，會一起放大） */}
+      <div style={{ position: 'fixed', inset: 0, zoom: textScale }}>
       {data && themeGateOpen && (
         <ThemeGate
           themes={THEMES}
@@ -520,6 +556,7 @@ export default function App() {
           onSkip={handleGateSkip}
         />
       )}
+      </div>
     </div>
   );
 }
