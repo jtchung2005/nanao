@@ -12,7 +12,7 @@ export default function RelationLegend({ metaRelations, bottomOffset = 150 }) {
     return (
       <button
         className="btn icon-only paper-card"
-        style={{ position: 'absolute', bottom: bottomOffset, left: 12, zIndex: 25 }}
+        style={{ position: 'absolute', bottom: bottomOffset, left: 12, zIndex: 26 }}
         onClick={() => setOpen(true)}
         title="展開連線關係說明"
       >
@@ -25,7 +25,7 @@ export default function RelationLegend({ metaRelations, bottomOffset = 150 }) {
     <div
       className="paper-card"
       style={{
-        position: 'absolute', bottom: bottomOffset, left: 12, zIndex: 25,
+        position: 'absolute', bottom: bottomOffset, left: 12, zIndex: 26,
         width: 300, maxHeight: 340, overflowY: 'auto', padding: 14,
       }}
     >

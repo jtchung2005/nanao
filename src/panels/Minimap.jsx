@@ -67,7 +67,7 @@ export default function Minimap({ graph, width = 160, height = 110, bottomOffset
     return (
       <button
         className="btn icon-only paper-card"
-        style={{ position: 'absolute', bottom: bottomOffset, right: 12, zIndex: 25 }}
+        style={{ position: 'absolute', bottom: bottomOffset, right: 12, zIndex: 26 }}
         onClick={() => setCollapsed(false)}
         title="展開縮圖"
       >🗺</button>
@@ -78,7 +78,7 @@ export default function Minimap({ graph, width = 160, height = 110, bottomOffset
     <div
       className="paper-card"
       style={{
-        position: 'absolute', bottom: bottomOffset, right: 12, padding: 4, zIndex: 25,
+        position: 'absolute', bottom: bottomOffset, right: 12, padding: 4, zIndex: 26,
         lineHeight: 0,
       }}
     >

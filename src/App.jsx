@@ -40,7 +40,7 @@ export default function App() {
   const [hover, setHover] = useState({ node: null, x: 0, y: 0 });
   const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
   const [ctrlOpen, setCtrlOpen] = useState(window.innerWidth >= BP_MOBILE);
-  const [bottomBarH, setBottomBarH] = useState(150);
+  const [bottomBarH, setBottomBarH] = useState(60);
   const [ctrlH, setCtrlH] = useState(40);
 
   const [fontSize, setFontSize] = useState(DEFAULTS.fontSize);
