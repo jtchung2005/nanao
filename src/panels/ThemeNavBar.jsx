@@ -62,7 +62,7 @@ export default function ThemeNavBar({ ref, themes, activeThemes, onToggleTheme, 
   // 「顯示全部」沒有單一主題色，選中時用中性深色
   // 字級跟內距比原本大一些，但控制在一行放得下 9 個 chip 的範圍內
   const chipStyle = (active, themeId) => {
-    const base = { cursor: 'pointer', fontSize: 13, padding: '6px 12px', whiteSpace: 'nowrap' };
+    const base = { cursor: 'pointer', fontSize: 'calc(13px * var(--ui-text-scale))', padding: '6px 12px', whiteSpace: 'nowrap' };
     if (!active) {
       return { ...base, background: 'var(--paper-bg)', color: 'var(--ink-secondary)', borderColor: 'var(--paper-edge)' };
     }
@@ -89,7 +89,7 @@ export default function ThemeNavBar({ ref, themes, activeThemes, onToggleTheme, 
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap', overflowX: 'auto' }}>
-        <span className="tiny" style={{ color: 'var(--ink-faint)', whiteSpace: 'nowrap', fontSize: 13 }}>切換主題</span>
+        <span className="tiny" style={{ color: 'var(--ink-faint)', whiteSpace: 'nowrap', fontSize: 'calc(13px * var(--ui-text-scale))' }}>切換主題</span>
         <button
           className="chip"
           style={chipStyle(showingAll)}

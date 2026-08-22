@@ -48,6 +48,28 @@ export default function App() {
   const [charge, setCharge] = useState(DEFAULTS.charge);
   const [spatialMode, setSpatialMode] = useState(true);
 
+  // ── 介面文字放大（Aa 按鈕）──────────────────────────
+  // 透過 CSS 變數 --ui-text-scale 縮放 tokens.css 裡的 --text-* 字級，
+  // 不新增任何包裝元素、不動疊層結構——只跟著既有 class（.caption/.tiny/.body/
+  // .title-1/.title-2）走的文字都會自動放大；圖上節點標籤/滑鼠提示框/導覽不受影響。
+  // 選擇會記住，下次造訪不用重選。
+  const TEXT_SCALE_STEPS = [1, 1.15, 1.3];
+  const [textScale, setTextScale] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem('nanao_text_scale'));
+      return TEXT_SCALE_STEPS.includes(saved) ? saved : 1;
+    } catch {
+      return 1;
+    }
+  });
+  const cycleTextScale = () => {
+    setTextScale((s) => {
+      const next = TEXT_SCALE_STEPS[(TEXT_SCALE_STEPS.indexOf(s) + 1) % TEXT_SCALE_STEPS.length];
+      try { localStorage.setItem('nanao_text_scale', String(next)); } catch { /* 無痕模式等情況忽略 */ }
+      return next;
+    });
+  };
+
   const [urlState, setUrlState] = useUrlState(URL_PARAMS);
   const isMobile = vp.w < BP_MOBILE;
 
@@ -380,7 +402,7 @@ export default function App() {
   const infoCardWidth = isMobile ? 'calc(100vw - 24px)' : 360;
 
   return (
-    <div className="paper-bg fixed inset-0">
+    <div className="paper-bg fixed inset-0" style={{ '--ui-text-scale': textScale }}>
       <div id="tour-canvas" ref={containerRef} className="absolute inset-0" style={{ zIndex: 1 }} />
 
       <LabelLayer
@@ -446,6 +468,14 @@ export default function App() {
             )}
             <button className="btn" onClick={() => graphRef.current?.zoomToFit()} title="全覽">⛶</button>
             <button className="btn" onClick={reset} title="重置篩選">↺</button>
+            <button
+              className="btn"
+              onClick={cycleTextScale}
+              title="放大介面文字（點擊切換大小）"
+              style={{ fontWeight: 700 }}
+            >
+              Aa{textScale > 1 ? '+'.repeat(TEXT_SCALE_STEPS.indexOf(textScale)) : ''}
+            </button>
             <button className="btn" onClick={() => setTourActive(true)} title="使用說明">？</button>
           </div>
         </div>

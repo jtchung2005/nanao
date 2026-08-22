@@ -30,7 +30,7 @@ export default function RelationLegend({ metaRelations, bottomOffset = 150 }) {
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <span className="caption" style={{ fontWeight: 700, fontSize: 16 }}>連線代表的關係</span>
+        <span className="caption" style={{ fontWeight: 700, fontSize: 'calc(16px * var(--ui-text-scale))' }}>連線代表的關係</span>
         <button className="btn icon-only" onClick={() => setOpen(false)} title="收起">×</button>
       </div>
       {metaRelations.map((r) => (
@@ -42,11 +42,11 @@ export default function RelationLegend({ metaRelations, bottomOffset = 150 }) {
             }}
           />
           <div>
-            <div className="tiny" style={{ fontWeight: 700, fontSize: 15, color: 'var(--ink-primary)' }}>
+            <div className="tiny" style={{ fontWeight: 700, fontSize: 'calc(15px * var(--ui-text-scale))', color: 'var(--ink-primary)' }}>
               {r.id}
               <span style={{ opacity: 0.6, marginLeft: 4, fontWeight: 400 }}>（{r.count}）</span>
             </div>
-            <div className="tiny" style={{ color: 'var(--ink-secondary)', fontSize: 14 }}>
+            <div className="tiny" style={{ color: 'var(--ink-secondary)', fontSize: 'calc(14px * var(--ui-text-scale))' }}>
               {RELATION_DESCRIPTIONS[r.id] || RELATION_DESC_FALLBACK}
             </div>
           </div>
