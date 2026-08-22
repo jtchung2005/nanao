@@ -39,7 +39,7 @@ export default function GraphControl({
           <button
             className="btn"
             onClick={onReset}
-            style={{ padding: '2px 8px', fontSize: 11 }}
+            style={{ padding: '2px 8px', fontSize: 'calc(11px * var(--ui-text-scale))' }}
             title="重置控制"
           >↺</button>
           <button className="btn icon-only" onClick={onToggleOpen} title="收起" style={{ width: 24, height: 24, padding: 0 }}>‹</button>

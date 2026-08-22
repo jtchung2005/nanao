@@ -29,6 +29,10 @@ export default function OnboardingTour({ active, steps, onFinish }) {
   // 持續追蹤目標元素位置（面板收合、視窗縮放都能跟上）
   useLayoutEffect(() => {
     if (!active) return undefined;
+    // 換到新的一步時，目標元素有可能還沒掛到畫面上（例如資訊卡要等 state 更新才會出現）。
+    // 這裡若不清空，聚光燈會停在上一步的舊位置，等目標終於出現才「跳」過去，
+    // 看起來像是卡住又突然滑動。改成先清空，等新目標量到位置了再顯示。
+    setRect(null);
     let raf;
     const tick = () => {
       const step = steps[idx];

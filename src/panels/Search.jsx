@@ -82,7 +82,7 @@ export default function Search({ nodes, links, onSelectNode }) {
           width: '100%', padding: '8px 12px',
           background: 'var(--paper-bg)', border: '1px solid var(--paper-edge)',
           borderRadius: 'var(--radius-md)', fontFamily: 'var(--font-sans)',
-          fontSize: 13, color: 'var(--ink-primary)', outline: 'none',
+          fontSize: 'calc(13px * var(--ui-text-scale))', color: 'var(--ink-primary)', outline: 'none',
         }}
       />
       {open && results.length > 0 && (
@@ -104,7 +104,7 @@ export default function Search({ nodes, links, onSelectNode }) {
                 background: i === active ? 'var(--paper-bg)' : 'transparent',
                 border: 0, cursor: 'pointer', textAlign: 'left',
                 borderRadius: 'var(--radius-sm)',
-                fontFamily: 'var(--font-serif)', color: 'var(--ink-primary)', fontSize: 14,
+                fontFamily: 'var(--font-serif)', color: 'var(--ink-primary)', fontSize: 'calc(14px * var(--ui-text-scale))',
               }}
             >
               <span className="chip-dot" style={{ background: `var(--cat-${r.node.meta_group})` }} />

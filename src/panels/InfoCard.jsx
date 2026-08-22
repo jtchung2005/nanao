@@ -90,7 +90,7 @@ export default function InfoCard({
       {/* 標題列與關閉按鈕 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div>
-          <div className="title-1" style={{ marginBottom: 6, fontWeight: 700, fontSize: 18 }}>
+          <div className="title-1" style={{ marginBottom: 6, fontWeight: 700, fontSize: 'calc(18px * var(--ui-text-scale))' }}>
             {node.id}
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -107,7 +107,7 @@ export default function InfoCard({
 
       {/* 年份與地址 */}
       {(node.start_year || node.end_year || node.address) && (
-        <div className="caption num" style={{ marginTop: 12, color: 'var(--ink-secondary, #666)', fontSize: 13 }}>
+        <div className="caption num" style={{ marginTop: 12, color: 'var(--ink-secondary, #666)', fontSize: 'calc(13px * var(--ui-text-scale))' }}>
           {(node.start_year || node.end_year) && (
             <div>
               年份： {node.start_year ?? '?'}{node.end_year && node.end_year !== node.start_year ? ` – ${node.end_year}` : ''}
@@ -127,7 +127,7 @@ export default function InfoCard({
             marginTop: 12,
             whiteSpace: 'pre-line',
             lineHeight: 1.5,
-            fontSize: 14,
+            fontSize: 'calc(14px * var(--ui-text-scale))',
             color: 'var(--ink-primary, #333)'
           }}
         >
@@ -168,7 +168,7 @@ export default function InfoCard({
               alignItems: 'center',
               gap: 4,
               fontWeight: 600,
-              fontSize: 14,
+              fontSize: 'calc(14px * var(--ui-text-scale))',
               color: '#FFFFFF',
               backgroundColor: '#8B5E3C',
               padding: '6px 12px',
@@ -199,7 +199,7 @@ export default function InfoCard({
               style={{
                 whiteSpace: 'pre-line',
                 lineHeight: 1.5,
-                fontSize: 12,
+                fontSize: 'calc(12px * var(--ui-text-scale))',
                 color: 'var(--ink-primary, #333)'
               }}
             >
@@ -208,7 +208,7 @@ export default function InfoCard({
           )}
         {/* 貢獻來源 */}
         {node.credits && (
-        <div className="caption" style={{ marginTop: 10, fontSize: 10, color: '#888' }}>
+        <div className="caption" style={{ marginTop: 10, fontSize: 'calc(10px * var(--ui-text-scale))', color: '#888' }}>
           來源/提供者：{node.credits}
         </div>
         )}
@@ -222,7 +222,7 @@ export default function InfoCard({
           <div className="caption breakthrough-star" style={{ marginBottom: 4, fontWeight: 600, color: '#D97706' }}>
             ★ 突破點
           </div>
-          <div className="body" style={{ fontSize: 13 }}>{node.breakthrough_note}</div>
+          <div className="body" style={{ fontSize: 'calc(13px * var(--ui-text-scale))' }}>{node.breakthrough_note}</div>
         </div>
       )}
 
@@ -238,7 +238,7 @@ export default function InfoCard({
               display: 'inline-flex',
               alignItems: 'center',
               gap: 4,
-              fontSize: 12,
+              fontSize: 'calc(12px * var(--ui-text-scale))',
               fontWeight: 600,
               color: '#FFFFFF',
               backgroundColor: '#2D5A3F',
@@ -269,7 +269,7 @@ export default function InfoCard({
                   borderLeft: `3px solid ${groupColor}`,
                   paddingLeft: 8,
                   marginBottom: 6,
-                  fontSize: 13
+                  fontSize: 'calc(13px * var(--ui-text-scale))'
                 }}
               >
                 {relGroup}（{items.length}）
@@ -285,7 +285,7 @@ export default function InfoCard({
                       justifyContent: 'flex-start',
                       textAlign: 'left',
                       padding: '6px 10px',
-                      fontSize: 13,
+                      fontSize: 'calc(13px * var(--ui-text-scale))',
                       cursor: 'pointer',
                       width: '100%'
                     }}
@@ -307,14 +307,14 @@ export default function InfoCard({
                       {it.node.id}
                     </span>
                     {it.label && (
-                      <span className="tiny" style={{ marginLeft: 6, opacity: 0.7, fontSize: 11 }}>
+                      <span className="tiny" style={{ marginLeft: 6, opacity: 0.7, fontSize: 'calc(11px * var(--ui-text-scale))' }}>
                         {it.label}
                       </span>
                     )}
                   </button>
                 ))}
                 {items.length > 12 && (
-                  <div className="tiny" style={{ paddingLeft: 10, fontSize: 11, color: '#888' }}>
+                  <div className="tiny" style={{ paddingLeft: 10, fontSize: 'calc(11px * var(--ui-text-scale))', color: '#888' }}>
                     ... 還有 {items.length - 12} 個
                   </div>
                 )}

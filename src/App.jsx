@@ -510,7 +510,7 @@ export default function App() {
       {data && !themeGateOpen && (
         <RelationLegend
           metaRelations={data.meta_relations.filter((r) => r.count > 0)}
-          bottomOffset={minimapBottom}
+          bottomOffset={minimapBottom + 24}
         />
       )}
 
